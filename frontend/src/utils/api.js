@@ -1,6 +1,24 @@
 import axios from 'axios';
 
-export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001';
+const normalizeApiOrigin = (value) => {
+  const trimmed = (value || '').trim().replace(/\/+$/, '');
+  return trimmed.replace(/\/api$/, '');
+};
+
+const fallbackOrigin =
+  process.env.NODE_ENV === 'production'
+    ? window.location.origin
+    : 'http://localhost:5001';
+
+if (process.env.NODE_ENV === 'production' && !process.env.REACT_APP_API_BASE_URL) {
+  console.warn(
+    'REACT_APP_API_BASE_URL is not set. API calls are using the frontend origin, which may cause 404 if backend is a separate service.'
+  );
+}
+
+export const API_BASE_URL = normalizeApiOrigin(
+  process.env.REACT_APP_API_BASE_URL || fallbackOrigin
+);
 
 const API = axios.create({ baseURL: `${API_BASE_URL}/api` });
 // Attach token automatically

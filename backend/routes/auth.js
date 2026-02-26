@@ -12,13 +12,27 @@ const signToken = (id) =>
 router.post('/register', async (req, res) => {
   try {
     const { name, email, password, age, gender, weight, height } = req.body;
+    const normalizedName = name?.trim();
+    const normalizedEmail = email?.trim().toLowerCase();
 
-    const existing = await User.findOne({ email });
+    if (!normalizedName || !normalizedEmail || !password) {
+      return res.status(400).json({ success: false, message: 'Name, email, and password are required' });
+    }
+
+    const existing = await User.findOne({ email: normalizedEmail });
     if (existing) {
       return res.status(400).json({ success: false, message: 'Email already registered' });
     }
 
-    const user = await User.create({ name, email, password, age, gender, weight, height });
+    const user = await User.create({
+      name: normalizedName,
+      email: normalizedEmail,
+      password,
+      ...(age !== undefined ? { age } : {}),
+      ...(gender ? { gender } : {}),
+      ...(weight !== undefined ? { weight } : {}),
+      ...(height !== undefined ? { height } : {}),
+    });
     const token = signToken(user._id);
 
     res.status(201).json({
@@ -35,6 +49,9 @@ router.post('/register', async (req, res) => {
       },
     });
   } catch (err) {
+    if (err.name === 'ValidationError') {
+      return res.status(400).json({ success: false, message: err.message });
+    }
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -42,7 +59,8 @@ router.post('/register', async (req, res) => {
 // @POST /api/auth/login
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const email = req.body.email?.trim().toLowerCase();
+    const { password } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ success: false, message: 'Please provide email and password' });
