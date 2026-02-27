@@ -23,7 +23,7 @@ if (!process.env.CLIENT_URL) {
 // ================== APP SETUP ==================
 const app = express();
 const server = http.createServer(app);
-app.use(express.static(path.join(__dirname, "frontend/dist")));
+app.use(express.static(path.join(__dirname, "frontend/src")));
 
 // ================== EXPRESS MIDDLEWARE ==================
 app.use(
@@ -59,7 +59,7 @@ app.use("/api/health", healthRoutes);
 app.use("/api/alerts", alertRoutes);
 
 app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "frontend/dist/index.html"));
+  res.sendFile(path.join(__dirname, "frontend/src/App.js"));
 });
 
 // ================== SOCKET EVENTS ==================
