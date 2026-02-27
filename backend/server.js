@@ -6,6 +6,8 @@ const { Server } = require("socket.io");
 const mongoose = require("mongoose");
 const cors = require("cors");
 require("dotenv").config();
+const path = require("path");
+
 
 // ================== BASIC CHECKS ==================
 if (!process.env.MONGO_URI) {
@@ -21,6 +23,7 @@ if (!process.env.CLIENT_URL) {
 // ================== APP SETUP ==================
 const app = express();
 const server = http.createServer(app);
+app.use(express.static(path.join(__dirname, "frontend/dist")));
 
 // ================== EXPRESS MIDDLEWARE ==================
 app.use(
@@ -55,9 +58,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/health", healthRoutes);
 app.use("/api/alerts", alertRoutes);
 
-app.get("/", (req, res) => {
-  res.send(process.cwd()+"/frontend/src/App.js");
-  res.json({ message: "Health Monitor API Running ✅" });
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "frontend/dist/index.html"));
 });
 
 // ================== SOCKET EVENTS ==================
