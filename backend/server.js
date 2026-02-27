@@ -5,6 +5,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 require("dotenv").config();
 const path = require("path");
+const fs = require("fs");
 
 // ================== BASIC CHECKS ==================
 if (!process.env.MONGO_URI) console.error("❌ MONGO_URI is missing");
@@ -46,13 +47,20 @@ app.use("/api/health", healthRoutes);
 app.use("/api/alerts", alertRoutes);
 
 // ================== SERVE FRONTEND ==================
-const frontendPath = path.join(__dirname, "../frontend/dist");
+// CRA outputs to "build" (not "dist")
+const frontendPath = path.join(__dirname, "../frontend/build");
+const frontendIndex = path.join(frontendPath, "index.html");
+const hasFrontendBuild = fs.existsSync(frontendIndex);
 
-app.use(express.static(frontendPath));
+if (hasFrontendBuild) {
+  app.use(express.static(frontendPath));
 
-app.get("*", (req, res) => {
-  res.sendFile(path.join(frontendPath, "index.html"));
-});
+  app.get("*", (req, res) => {
+    res.sendFile(frontendIndex);
+  });
+} else {
+  console.warn(`⚠️ Frontend build not found at ${frontendIndex}`);
+}
 
 // ================== SOCKET EVENTS ==================
 io.on("connection", (socket) => {
