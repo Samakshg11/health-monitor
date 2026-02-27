@@ -1,5 +1,3 @@
-// server.js
-
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -8,30 +6,20 @@ const cors = require("cors");
 require("dotenv").config();
 const path = require("path");
 
-
 // ================== BASIC CHECKS ==================
-if (!process.env.MONGO_URI) {
-  console.error("❌ MONGO_URI is missing");
-}
-if (!process.env.JWT_SECRET) {
-  console.error("❌ JWT_SECRET is missing");
-}
-if (!process.env.CLIENT_URL) {
-  console.error("❌ CLIENT_URL is missing");
-}
+if (!process.env.MONGO_URI) console.error("❌ MONGO_URI is missing");
+if (!process.env.JWT_SECRET) console.error("❌ JWT_SECRET is missing");
+if (!process.env.CLIENT_URL) console.error("❌ CLIENT_URL is missing");
 
 // ================== APP SETUP ==================
 const app = express();
 const server = http.createServer(app);
-app.use(express.static(path.join(__dirname, "frontend/src")));
 
-// ================== EXPRESS MIDDLEWARE ==================
+// ================== MIDDLEWARE ==================
 app.use(
   cors({
-    origin: process.env.CLIENT_URL, // EXACT frontend URL
+    origin: process.env.CLIENT_URL,
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
@@ -40,13 +28,12 @@ app.use(express.json());
 // ================== SOCKET.IO ==================
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL, // EXACT frontend URL
+    origin: process.env.CLIENT_URL,
     methods: ["GET", "POST"],
     credentials: true,
   },
 });
 
-// Make io accessible in routes
 app.set("io", io);
 
 // ================== ROUTES ==================
@@ -58,8 +45,13 @@ app.use("/api/auth", authRoutes);
 app.use("/api/health", healthRoutes);
 app.use("/api/alerts", alertRoutes);
 
+// ================== SERVE FRONTEND ==================
+const frontendPath = path.join(__dirname, "../frontend/dist");
+
+app.use(express.static(frontendPath));
+
 app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "frontend/src/App.js"));
+  res.sendFile(path.join(frontendPath, "index.html"));
 });
 
 // ================== SOCKET EVENTS ==================
@@ -85,15 +77,8 @@ server.listen(PORT, () => {
 
 // ================== CONNECT MONGODB ==================
 mongoose
-  .connect(process.env.MONGO_URI, {
-    serverSelectionTimeoutMS: 5000,
-  })
-  .then(() => {
-    console.log("✅ MongoDB connected");
-  })
-  .catch((err) => {
-    console.error("❌ MongoDB connection failed:", err.message);
-  });
-
-// ================== EXPORT ==================
-module.exports = { io };
+  .connect(process.env.MONGO_URI)
+  .then(() => console.log("✅ MongoDB connected"))
+  .catch((err) =>
+    console.error("❌ MongoDB connection failed:", err.message)
+  );
