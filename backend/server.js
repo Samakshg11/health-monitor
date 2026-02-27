@@ -56,6 +56,7 @@ app.use("/api/health", healthRoutes);
 app.use("/api/alerts", alertRoutes);
 
 app.get("/", (req, res) => {
+  res.send(process.cwd()+"/frontend/src/App.js");
   res.json({ message: "Health Monitor API Running ✅" });
 });
 
