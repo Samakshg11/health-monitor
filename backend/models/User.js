@@ -30,6 +30,33 @@ const userSchema = new mongoose.Schema(
       activeMinutes: { type: Number, default: 60 },
       hydration: { type: Number, default: 100 }, // percentage
     },
+    organization: {
+      name: { type: String, trim: true },
+      role: { type: String, trim: true },
+    },
+    subscription: {
+      plan: {
+        type: String,
+        enum: ['starter', 'growth', 'enterprise'],
+        default: 'starter',
+      },
+      billingCycle: {
+        type: String,
+        enum: ['monthly', 'annual'],
+        default: 'monthly',
+      },
+      status: {
+        type: String,
+        enum: ['active', 'past_due', 'canceled', 'trialing'],
+        default: 'active',
+      },
+      startedAt: {
+        type: Date,
+        default: Date.now,
+      },
+      renewsAt: { type: Date },
+      trialEndsAt: { type: Date },
+    },
   },
   { timestamps: true }
 );

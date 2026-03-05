@@ -13,6 +13,8 @@ const Profile = () => {
     gender: (user && user.gender) || '',
     weight: (user && user.weight) || '',
     height: (user && user.height) || '',
+    organizationName: (user && user.organization && user.organization.name) || '',
+    organizationRole: (user && user.organization && user.organization.role) || '',
   });
   const [goals, setGoals] = useState({ steps: 10000, activeMinutes: 60, hydration: 100 });
 
@@ -108,6 +110,18 @@ const Profile = () => {
                     <option value="female">Female</option>
                     <option value="other">Other</option>
                   </select>
+                </div>
+              </div>
+
+              <div className="section-title">🏥 Organization</div>
+              <div className="input-group">
+                <div className="input-field">
+                  <label>Organization Name</label>
+                  <input name="organizationName" value={form.organizationName} onChange={handleChange} />
+                </div>
+                <div className="input-field">
+                  <label>Your Role</label>
+                  <input name="organizationRole" value={form.organizationRole} onChange={handleChange} />
                 </div>
               </div>
 

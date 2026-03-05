@@ -3,6 +3,7 @@ const HealthReading = require('../models/HealthReading');
 const Alert = require('../models/Alert');
 const User = require('../models/User');
 const { protect } = require('../middleware/auth');
+const { getPlan } = require('../config/plans');
 
 const router = express.Router();
 
@@ -110,6 +111,27 @@ const generateAlerts = async (reading, userId, io) => {
 // @POST /api/health/reading - Submit new health reading
 router.post('/reading', protect, async (req, res) => {
   try {
+    const user = await User.findById(req.user._id).select('subscription.plan');
+    const activePlan = getPlan(user?.subscription?.plan || 'starter');
+    const monthlyLimit = activePlan.limits.readingsPerMonth;
+    if (monthlyLimit !== null) {
+      const start = new Date();
+      start.setDate(1);
+      start.setHours(0, 0, 0, 0);
+      const usage = await HealthReading.countDocuments({
+        user: req.user._id,
+        recordedAt: { $gte: start },
+      });
+      if (usage >= monthlyLimit) {
+        return res.status(402).json({
+          success: false,
+          message: `Monthly reading limit reached for ${activePlan.label}. Upgrade to continue.`,
+          code: 'PLAN_LIMIT_REACHED',
+          usage: { used: usage, limit: monthlyLimit },
+        });
+      }
+    }
+
     const {
       heartRate,
       bloodPressure,

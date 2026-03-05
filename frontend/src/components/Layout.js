@@ -30,6 +30,7 @@ const Layout = ({ children }) => {
     { to: '/log', icon: '➕', label: 'Log Reading' },
     { to: '/history', icon: '📋', label: 'History' },
     { to: '/reports', icon: '📈', label: 'Reports' },
+    { to: '/billing', icon: '💳', label: 'Billing' },
     { to: '/alerts', icon: '🔔', label: 'Alerts', badge: unreadCount },
     { to: '/profile', icon: '👤', label: 'Profile' },
   ];

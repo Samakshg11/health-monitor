@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
-import { getLatestReading, getReadings, getFitnessToday, submitReading } from '../utils/api';
+import { getLatestReading, getReadings, getFitnessToday, submitReading, getBillingCurrent } from '../utils/api';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
@@ -51,6 +51,7 @@ const Dashboard = () => {
   const [latest, setLatest] = useState(null);
   const [chartData, setChartData] = useState([]);
   const [fitnessSummary, setFitnessSummary] = useState(null);
+  const [billingSummary, setBillingSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sessionMode, setSessionMode] = useState('balanced');
   const [liveSessionEnabled, setLiveSessionEnabled] = useState(false);
@@ -64,11 +65,13 @@ const Dashboard = () => {
 
   const loadData = useCallback(async () => {
     try {
-      const [latestRes, readingsRes] = await Promise.all([
+      const [latestRes, readingsRes, billingRes] = await Promise.all([
         getLatestReading(),
         getReadings({ limit: 20 }),
+        getBillingCurrent(),
       ]);
       setLatest(latestRes.data.reading);
+      setBillingSummary(billingRes.data);
       const readings = readingsRes.data.readings.reverse();
       setChartData(
         readings.map((r) => ({
@@ -223,6 +226,32 @@ const Dashboard = () => {
             </div>
           )}
         </div>
+
+        {billingSummary && (
+          <div className="card" style={{ marginBottom: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+              <div>
+                <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>Subscription</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', textTransform: 'capitalize' }}>
+                  {billingSummary.subscription?.plan || 'starter'} plan
+                </div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
+                  Status: {billingSummary.subscription?.status || 'active'}
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>Readings Usage</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem' }}>
+                  {billingSummary.usage?.readings?.used || 0}
+                  {billingSummary.usage?.readings?.limit === null
+                    ? ' / Unlimited'
+                    : ` / ${billingSummary.usage?.readings?.limit || 0}`}
+                </div>
+                <Link to="/billing" style={{ color: 'var(--accent-red)', fontSize: '0.82rem' }}>Manage plan →</Link>
+              </div>
+            </div>
+          </div>
+        )}
 
         {liveAlerts.length > 0 && (
           <div style={{ background: 'rgba(230,57,70,0.08)', border: '1px solid rgba(230,57,70,0.3)', borderRadius: 12, padding: '12px 18px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>

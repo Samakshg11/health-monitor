@@ -11,7 +11,7 @@ const signToken = (id) =>
 // @POST /api/auth/register
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, age, gender, weight, height } = req.body;
+    const { name, email, password, age, gender, weight, height, organization } = req.body;
     const normalizedName = name?.trim();
     const normalizedEmail = email?.trim().toLowerCase();
 
@@ -32,6 +32,7 @@ router.post('/register', async (req, res) => {
       ...(gender ? { gender } : {}),
       ...(weight !== undefined ? { weight } : {}),
       ...(height !== undefined ? { height } : {}),
+      ...(organization ? { organization } : {}),
     });
     const token = signToken(user._id);
 
@@ -47,6 +48,8 @@ router.post('/register', async (req, res) => {
         weight: user.weight,
         height: user.height,
         dailyGoals: user.dailyGoals,
+        subscription: user.subscription,
+        organization: user.organization,
       },
     });
   } catch (err) {
@@ -85,6 +88,8 @@ router.post('/login', async (req, res) => {
         weight: user.weight,
         height: user.height,
         dailyGoals: user.dailyGoals,
+        subscription: user.subscription,
+        organization: user.organization,
       },
     });
   } catch (err) {
@@ -100,10 +105,14 @@ router.get('/me', protect, async (req, res) => {
 // @PUT /api/auth/profile
 router.put('/profile', protect, async (req, res) => {
   try {
-    const { name, age, gender, weight, height } = req.body;
+    const { name, age, gender, weight, height, organization, organizationName, organizationRole } = req.body;
+    const normalizedOrganization = organization || {
+      name: organizationName,
+      role: organizationRole,
+    };
     const user = await User.findByIdAndUpdate(
       req.user._id,
-      { name, age, gender, weight, height },
+      { name, age, gender, weight, height, organization: normalizedOrganization },
       { new: true, runValidators: true }
     );
     res.json({ success: true, user });

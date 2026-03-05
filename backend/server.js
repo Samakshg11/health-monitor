@@ -59,10 +59,12 @@ app.set("io", io);
 const authRoutes = require("./routes/auth");
 const healthRoutes = require("./routes/health");
 const alertRoutes = require("./routes/alerts");
+const billingRoutes = require("./routes/billing");
 
 app.use("/api/auth", authRoutes);
 app.use("/api/health", healthRoutes);
 app.use("/api/alerts", alertRoutes);
+app.use("/api/billing", billingRoutes);
 
 // ================== SERVE FRONTEND ==================
 // CRA outputs to "build" (not "dist")

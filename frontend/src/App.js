@@ -12,6 +12,7 @@ import History from './pages/History';
 import Reports from './pages/Reports';
 import Alerts from './pages/Alerts';
 import Profile from './pages/Profile';
+import Billing from './pages/Billing';
 import Layout from './components/Layout';
 import './App.css';
 
@@ -80,6 +81,10 @@ function App() {
             <Route
               path="/profile"
               element={<PrivateRoute><Layout><Profile /></Layout></PrivateRoute>}
+            />
+            <Route
+              path="/billing"
+              element={<PrivateRoute><Layout><Billing /></Layout></PrivateRoute>}
             />
           </Routes>
         </Router>

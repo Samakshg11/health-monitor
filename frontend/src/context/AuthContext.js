@@ -64,7 +64,14 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updateProfile = async (profileData) => {
-    const { data } = await API.put('/auth/profile', profileData);
+    const payload = {
+      ...profileData,
+      organization: {
+        name: profileData.organizationName || '',
+        role: profileData.organizationRole || '',
+      },
+    };
+    const { data } = await API.put('/auth/profile', payload);
     setUser(data.user);
     return data;
   };
