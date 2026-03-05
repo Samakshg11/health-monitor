@@ -17,9 +17,24 @@ const app = express();
 const server = http.createServer(app);
 
 // ================== MIDDLEWARE ==================
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  process.env.CLIENT_URL_ALT,
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:5001',
+].filter(Boolean);
+
+const corsOriginValidator = (origin, callback) => {
+  // Allow non-browser clients and same-origin server calls.
+  if (!origin) return callback(null, true);
+  if (allowedOrigins.includes(origin)) return callback(null, true);
+  return callback(new Error(`CORS blocked for origin: ${origin}`));
+};
+
 app.use(
   cors({
-    origin: process.env.CLIENT_URL,
+    origin: corsOriginValidator,
     credentials: true,
   })
 );
@@ -29,7 +44,7 @@ app.use(express.json());
 // ================== SOCKET.IO ==================
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL,
+    origin: corsOriginValidator,
     methods: ["GET", "POST"],
     credentials: true,
   },
