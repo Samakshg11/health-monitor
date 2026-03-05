@@ -35,6 +35,7 @@ export const getLatestReading = () => API.get('/health/latest');
 export const getStats = (days) => API.get('/health/stats', { params: { days } });
 export const deleteReading = (id) => API.delete(`/health/reading/${id}`);
 export const getFitnessToday = () => API.get('/health/fitness/today');
+export const getInsights = (days) => API.get('/health/insights', { params: { days } });
 export const getGoals = () => API.get('/health/goals');
 export const updateGoals = (payload) => API.put('/health/goals', payload);
 export const getBillingPlans = () => API.get('/billing/plans');

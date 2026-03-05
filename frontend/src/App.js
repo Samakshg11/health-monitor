@@ -13,6 +13,7 @@ import Reports from './pages/Reports';
 import Alerts from './pages/Alerts';
 import Profile from './pages/Profile';
 import Billing from './pages/Billing';
+import Insights from './pages/Insights';
 import Layout from './components/Layout';
 import './App.css';
 
@@ -85,6 +86,10 @@ function App() {
             <Route
               path="/billing"
               element={<PrivateRoute><Layout><Billing /></Layout></PrivateRoute>}
+            />
+            <Route
+              path="/insights"
+              element={<PrivateRoute><Layout><Insights /></Layout></PrivateRoute>}
             />
           </Routes>
         </Router>

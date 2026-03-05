@@ -405,4 +405,115 @@ router.put('/goals', protect, async (req, res) => {
   }
 });
 
+// @GET /api/health/insights - Real-world actionable insights and recommendations
+router.get('/insights', protect, async (req, res) => {
+  try {
+    const days = Math.min(Math.max(Number(req.query.days) || 14, 3), 60);
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+
+    const readings = await HealthReading.find({
+      user: req.user._id,
+      recordedAt: { $gte: since },
+    }).sort({ recordedAt: 1 });
+
+    if (!readings.length) {
+      return res.json({
+        success: true,
+        insights: {
+          score: 0,
+          status: 'insufficient-data',
+          riskLevel: 'unknown',
+          summary: `No readings available in the last ${days} days.`,
+          recommendations: ['Log at least one reading daily for 7 days to unlock insights.'],
+          metrics: null,
+        },
+      });
+    }
+
+    const values = {
+      heartRate: readings.map((r) => r.heartRate?.value).filter((v) => typeof v === 'number'),
+      spo2: readings.map((r) => r.spo2?.value).filter((v) => typeof v === 'number'),
+      steps: readings.map((r) => r.steps?.value || 0),
+      hydration: readings.map((r) => r.hydration?.value).filter((v) => typeof v === 'number'),
+      sleep: readings.map((r) => r.sleepScore?.value).filter((v) => typeof v === 'number'),
+    };
+
+    const avg = (arr) =>
+      arr.length ? Number((arr.reduce((acc, n) => acc + n, 0) / arr.length).toFixed(1)) : null;
+    const latest = readings[readings.length - 1];
+
+    const abnormalities = {
+      hr: readings.filter((r) => r.heartRate?.status && r.heartRate.status !== 'normal').length,
+      spo2: readings.filter((r) => r.spo2?.status && r.spo2.status !== 'normal').length,
+      hydration: readings.filter((r) => r.hydration?.status && r.hydration.status !== 'normal').length,
+      sleep: readings.filter((r) => r.sleepScore?.status && r.sleepScore.status !== 'normal').length,
+    };
+
+    const consistency = Math.min(100, Math.round((readings.length / days) * 100));
+    const avgSteps = avg(values.steps) || 0;
+    const avgHydration = avg(values.hydration) || 0;
+    const avgSleep = avg(values.sleep) || 0;
+    const avgHr = avg(values.heartRate) || 0;
+    const avgSpo2 = avg(values.spo2) || 0;
+
+    let score = 100;
+    score -= (abnormalities.hr + abnormalities.spo2 + abnormalities.hydration + abnormalities.sleep) * 4;
+    score -= consistency < 65 ? 12 : 0;
+    score -= avgSteps < 4000 ? 10 : avgSteps < 7000 ? 5 : 0;
+    score -= avgHydration < 60 ? 8 : avgHydration < 70 ? 4 : 0;
+    score -= avgSleep < 65 ? 8 : avgSleep < 75 ? 4 : 0;
+    score = Math.max(12, Math.min(100, Math.round(score)));
+
+    const riskLevel = score >= 80 ? 'low' : score >= 60 ? 'moderate' : 'high';
+    const recommendations = [];
+
+    if (consistency < 65) recommendations.push('Increase logging frequency to improve trend reliability.');
+    if (abnormalities.hr >= 2) recommendations.push('Review heart-rate spikes and add recovery sessions this week.');
+    if (avgSpo2 && avgSpo2 < 95) recommendations.push('Persistent low SpO₂ detected; seek clinical assessment if symptoms continue.');
+    if (avgSteps < 7000) recommendations.push('Set a gradual activity target: +1,000 daily steps over current average.');
+    if (avgHydration < 70) recommendations.push('Hydration is low; schedule timed water reminders every 2-3 hours.');
+    if (avgSleep < 75) recommendations.push('Sleep recovery is below target; prioritize 7-8h sleep and consistent bed timing.');
+    if (!recommendations.length) recommendations.push('Current trends look stable. Maintain routine and keep monitoring.');
+
+    const insights = {
+      score,
+      status: score >= 80 ? 'stable' : score >= 60 ? 'watch' : 'needs-attention',
+      riskLevel,
+      summary:
+        riskLevel === 'low'
+          ? 'Vitals and activity trends are stable with good adherence.'
+          : riskLevel === 'moderate'
+            ? 'Some signals need closer monitoring to prevent deterioration.'
+            : 'Multiple risk signals detected; prioritize intervention and follow-up.',
+      recommendations,
+      metrics: {
+        daysReviewed: days,
+        readingsCount: readings.length,
+        consistency,
+        averages: {
+          heartRate: avgHr || null,
+          spo2: avgSpo2 || null,
+          steps: avgSteps || null,
+          hydration: avgHydration || null,
+          sleepScore: avgSleep || null,
+        },
+        latest: {
+          recordedAt: latest.recordedAt,
+          heartRate: latest.heartRate?.value ?? null,
+          spo2: latest.spo2?.value ?? null,
+          hydration: latest.hydration?.value ?? null,
+          sleepScore: latest.sleepScore?.value ?? null,
+          workoutMode: latest.workoutMode || 'balanced',
+        },
+        abnormalities,
+      },
+    };
+
+    res.json({ success: true, insights });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 module.exports = router;
