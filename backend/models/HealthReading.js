@@ -28,6 +28,31 @@ const healthReadingSchema = new mongoose.Schema(
       value: { type: Number, default: 0 },
       status: { type: String, enum: ['normal', 'warning', 'critical'], default: 'normal' },
     },
+    calories: {
+      value: { type: Number, default: 0 },
+    },
+    distance: {
+      value: { type: Number, default: 0 }, // kilometers
+    },
+    cadence: {
+      value: { type: Number }, // steps per minute
+    },
+    activeMinutes: {
+      value: { type: Number, default: 0 },
+    },
+    hydration: {
+      value: { type: Number }, // percentage
+      status: { type: String, enum: ['normal', 'warning', 'critical'], default: 'normal' },
+    },
+    sleepScore: {
+      value: { type: Number }, // percentage
+      status: { type: String, enum: ['normal', 'warning', 'critical'], default: 'normal' },
+    },
+    workoutMode: {
+      type: String,
+      enum: ['balanced', 'push', 'recovery'],
+      default: 'balanced',
+    },
     notes: { type: String },
     recordedAt: {
       type: Date,
@@ -70,6 +95,22 @@ healthReadingSchema.pre('save', function (next) {
     if (temp < 35.5 || temp > 39) this.temperature.status = 'critical';
     else if (temp < 36.1 || temp > 37.2) this.temperature.status = 'warning';
     else this.temperature.status = 'normal';
+  }
+
+  // Hydration: normal >=70, warning 50-69, critical <50
+  if (this.hydration?.value !== undefined) {
+    const hydration = this.hydration.value;
+    if (hydration < 50) this.hydration.status = 'critical';
+    else if (hydration < 70) this.hydration.status = 'warning';
+    else this.hydration.status = 'normal';
+  }
+
+  // Sleep score: normal >=75, warning 60-74, critical <60
+  if (this.sleepScore?.value !== undefined) {
+    const sleep = this.sleepScore.value;
+    if (sleep < 60) this.sleepScore.status = 'critical';
+    else if (sleep < 75) this.sleepScore.status = 'warning';
+    else this.sleepScore.status = 'normal';
   }
 
   next();

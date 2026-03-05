@@ -25,6 +25,11 @@ const userSchema = new mongoose.Schema(
     gender: { type: String, enum: ['male', 'female', 'other'] },
     weight: { type: Number }, // kg
     height: { type: Number }, // cm
+    dailyGoals: {
+      steps: { type: Number, default: 10000 },
+      activeMinutes: { type: Number, default: 60 },
+      hydration: { type: Number, default: 100 }, // percentage
+    },
   },
   { timestamps: true }
 );

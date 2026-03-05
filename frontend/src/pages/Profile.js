@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { getGoals, updateGoals } from '../utils/api';
 import toast from 'react-hot-toast';
 
 const Profile = () => {
   const { user, updateProfile } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [goalsLoading, setGoalsLoading] = useState(false);
   const [form, setForm] = useState({
     name: (user && user.name) || '',
     age: (user && user.age) || '',
@@ -12,8 +14,20 @@ const Profile = () => {
     weight: (user && user.weight) || '',
     height: (user && user.height) || '',
   });
+  const [goals, setGoals] = useState({ steps: 10000, activeMinutes: 60, hydration: 100 });
+
+  useEffect(() => {
+    const loadGoals = async () => {
+      try {
+        const { data } = await getGoals();
+        setGoals(data.goals);
+      } catch {}
+    };
+    loadGoals();
+  }, []);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const handleGoalChange = (e) => setGoals((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -25,6 +39,24 @@ const Profile = () => {
       toast.error('Failed to update profile');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoalsSubmit = async (e) => {
+    e.preventDefault();
+    setGoalsLoading(true);
+    try {
+      const { data } = await updateGoals({
+        steps: Number(goals.steps),
+        activeMinutes: Number(goals.activeMinutes),
+        hydration: Number(goals.hydration),
+      });
+      setGoals(data.goals);
+      toast.success('Daily goals updated!');
+    } catch {
+      toast.error('Failed to update goals');
+    } finally {
+      setGoalsLoading(false);
     }
   };
 
@@ -40,7 +72,7 @@ const Profile = () => {
     <div>
       <div className="page-header">
         <h1>Profile</h1>
-        <p>Manage your personal health information</p>
+        <p>Manage your personal info and fitness goals</p>
       </div>
       <div className="page-content">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 20 }}>
@@ -100,6 +132,36 @@ const Profile = () => {
                 {loading ? 'Saving...' : 'Save Profile'}
               </button>
             </form>
+
+            <form onSubmit={handleGoalsSubmit} style={{ marginTop: 28 }}>
+              <div className="section-title">🎯 Daily Fitness Goals</div>
+              <div className="input-group">
+                <div className="input-field">
+                  <label>Steps Goal</label>
+                  <div className="input-with-unit">
+                    <input type="number" name="steps" value={goals.steps} onChange={handleGoalChange} min="1000" />
+                    <span className="unit-label">steps</span>
+                  </div>
+                </div>
+                <div className="input-field">
+                  <label>Active Minutes Goal</label>
+                  <div className="input-with-unit">
+                    <input type="number" name="activeMinutes" value={goals.activeMinutes} onChange={handleGoalChange} min="10" />
+                    <span className="unit-label">min</span>
+                  </div>
+                </div>
+                <div className="input-field">
+                  <label>Hydration Goal</label>
+                  <div className="input-with-unit">
+                    <input type="number" name="hydration" value={goals.hydration} onChange={handleGoalChange} min="20" max="100" />
+                    <span className="unit-label">%</span>
+                  </div>
+                </div>
+              </div>
+              <button type="submit" className="btn btn-secondary" disabled={goalsLoading}>
+                {goalsLoading ? 'Saving...' : 'Save Goals'}
+              </button>
+            </form>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -108,16 +170,10 @@ const Profile = () => {
                 <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: 12 }}>BMI Calculator</div>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '3rem', fontWeight: 700, color: 'var(--accent-red)', lineHeight: 1 }}>{bmi}</div>
                 <div style={{ color: 'var(--text-secondary)', marginTop: 6, fontSize: '0.9rem' }}>{bmiCategory}</div>
-                <div style={{ marginTop: 16, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  <div>Underweight: &lt;18.5</div>
-                  <div>Normal: 18.5–24.9</div>
-                  <div>Overweight: 25–29.9</div>
-                  <div>Obese: ≥30</div>
-                </div>
               </div>
             )}
             <div className="card">
-              <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: 12 }}>Normal Ranges Reference</div>
+              <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: 12 }}>Reference</div>
               <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.8 }}>
                 <div>❤️ HR: 60–100 BPM</div>
                 <div>🫀 BP: &lt;120/80 mmHg</div>

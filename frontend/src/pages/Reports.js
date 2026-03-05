@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getStats } from '../utils/api';
 import {
-  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import { format } from 'date-fns';
 
@@ -24,6 +24,9 @@ const Reports = () => {
           spo2: r.spo2 && r.spo2.value,
           temperature: r.temperature && r.temperature.value,
           steps: r.steps && r.steps.value,
+          calories: r.calories && r.calories.value,
+          distance: r.distance && r.distance.value,
+          activeMinutes: r.activeMinutes && r.activeMinutes.value,
         })));
       } catch (e) {}
       setLoading(false);
@@ -45,7 +48,7 @@ const Reports = () => {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <h1>Health Reports</h1>
-            <p>Aggregated health statistics and trend analysis</p>
+            <p>Vitals + fitness analytics over time</p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             {[7, 14, 30].map((d) => (
@@ -74,22 +77,12 @@ const Reports = () => {
             </div>
 
             <div style={{ marginBottom: 24 }}>
-              <h3 style={{ fontFamily: 'var(--font-display)', marginBottom: 14, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>🫁 SpO₂ — Last {days} days</h3>
-              <div className="stats-grid">
-                <StatBox label="Avg SpO₂" value={stats.spo2 && stats.spo2.avg && (stats.spo2.avg + '%')} />
-                <StatBox label="Min SpO₂" value={stats.spo2 && stats.spo2.min && (stats.spo2.min + '%')} />
-                <StatBox label="Max SpO₂" value={stats.spo2 && stats.spo2.max && (stats.spo2.max + '%')} />
-                <StatBox label="Readings" value={stats.spo2 && stats.spo2.count} />
-              </div>
-            </div>
-
-            <div style={{ marginBottom: 24 }}>
-              <h3 style={{ fontFamily: 'var(--font-display)', marginBottom: 14, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>👣 Activity — Last {days} days</h3>
+              <h3 style={{ fontFamily: 'var(--font-display)', marginBottom: 14, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>👟 Fitness Summary — Last {days} days</h3>
               <div className="stats-grid">
                 <StatBox label="Total Steps" value={stats.steps && stats.steps.total && stats.steps.total.toLocaleString()} />
-                <StatBox label="Avg Steps/Day" value={stats.steps && stats.steps.avg && Number(stats.steps.avg).toLocaleString()} />
-                <StatBox label="Best Day" value={stats.steps && stats.steps.max && stats.steps.max.toLocaleString()} />
-                <StatBox label="Total Readings" value={stats.totalReadings} />
+                <StatBox label="Total Calories" value={stats.calories && stats.calories.total} />
+                <StatBox label="Distance (km)" value={stats.distance && stats.distance.total} />
+                <StatBox label="Active Mins" value={stats.activeMinutes && stats.activeMinutes.total} />
               </div>
             </div>
 
@@ -120,14 +113,17 @@ const Reports = () => {
                   </ResponsiveContainer>
                 </div>
                 <div className="chart-card">
-                  <h3>Daily Steps</h3>
-                  <ResponsiveContainer width="100%" height={200}>
+                  <h3>Activity Volume (Steps / Calories / Active Mins)</h3>
+                  <ResponsiveContainer width="100%" height={220}>
                     <BarChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                       <XAxis dataKey="time" tick={{ fill: '#555570', fontSize: 11 }} />
                       <YAxis tick={{ fill: '#555570', fontSize: 11 }} />
                       <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8 }} />
+                      <Legend />
                       <Bar dataKey="steps" name="Steps" fill="#9b59b6" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="calories" name="Calories" fill="#e63946" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="activeMinutes" name="Active Minutes" fill="#4ecdc4" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>

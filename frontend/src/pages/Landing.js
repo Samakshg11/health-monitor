@@ -126,6 +126,28 @@ const getRiskBand = (age, sys, hr) => {
   return { level: 'Low', note: 'Vitals currently appear stable with routine monitoring.' };
 };
 
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+const randomBetween = (min, max) => Math.random() * (max - min) + min;
+
+const formatClock = () =>
+  new Date().toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+const trackerModes = {
+  balanced: { label: 'Balanced', hrCenter: 122, cadenceCenter: 158, stepRange: [22, 44], paceRange: [5.8, 6.6] },
+  push: { label: 'Push', hrCenter: 148, cadenceCenter: 176, stepRange: [38, 72], paceRange: [4.3, 5.2] },
+  recovery: { label: 'Recovery', hrCenter: 108, cadenceCenter: 146, stepRange: [15, 34], paceRange: [6.7, 7.7] },
+};
+
+const getIntensityBand = (heartRate) => {
+  if (heartRate >= 152) return { label: 'Peak Output', tone: 'high' };
+  if (heartRate >= 132) return { label: 'Cardio Build', tone: 'moderate' };
+  return { label: 'Steady Base', tone: 'low' };
+};
+
 const Landing = () => {
   const [openFaq, setOpenFaq] = useState(0);
   const [snapshot, setSnapshot] = useState({ age: 36, systolic: 124, heartRate: 74 });
@@ -136,6 +158,25 @@ const Landing = () => {
   const [demoOpen, setDemoOpen] = useState(false);
   const [demoForm, setDemoForm] = useState({ name: '', email: '', organization: '', teamSize: '' });
   const [roiInput, setRoiInput] = useState({ profiles: 220, events: 18, savingsPerEvent: 180 });
+  const [trackerMode, setTrackerMode] = useState('balanced');
+  const [trackerPaused, setTrackerPaused] = useState(false);
+  const [liveMetrics, setLiveMetrics] = useState({
+    heartRate: 121,
+    steps: 4238,
+    calories: 318,
+    distance: 3.4,
+    cadence: 159,
+    pace: 5.9,
+    activeMinutes: 37,
+    hydration: 73,
+    sleep: 82,
+  });
+  const [heartTrend, setHeartTrend] = useState([112, 117, 121, 126, 124, 129, 123, 121, 127, 122, 120, 121]);
+  const [activityFeed, setActivityFeed] = useState([
+    { title: 'Workout detected', detail: 'Auto-started after pace crossed target.', time: formatClock() },
+    { title: 'Hydration reminder', detail: 'Drink 150 ml in the next 10 minutes.', time: formatClock() },
+    { title: 'Cadence stabilized', detail: 'Stride synced to balanced zone.', time: formatClock() },
+  ]);
   const counterRefs = useRef([]);
   counterRefs.current = [];
 
@@ -154,12 +195,82 @@ const Landing = () => {
     };
   }, [roiInput]);
 
+  const intensity = useMemo(() => getIntensityBand(liveMetrics.heartRate), [liveMetrics.heartRate]);
+
+  const liveSystolic = useMemo(() => clamp(Math.round(96 + liveMetrics.heartRate * 0.25), 102, 148), [liveMetrics.heartRate]);
+
+  const trackerReadiness = useMemo(() => {
+    const score =
+      liveMetrics.sleep * 0.45 +
+      liveMetrics.hydration * 0.3 +
+      clamp(130 - Math.abs(liveMetrics.heartRate - 130), 72, 130) * 0.25;
+    return clamp(Math.round(score), 42, 98);
+  }, [liveMetrics]);
+
+  const goalCompletion = useMemo(() => {
+    const stepsScore = clamp((liveMetrics.steps / 10000) * 55, 0, 55);
+    const activeScore = clamp((liveMetrics.activeMinutes / 60) * 30, 0, 30);
+    const hydrationScore = clamp((liveMetrics.hydration / 100) * 15, 0, 15);
+    return clamp(Math.round(stepsScore + activeScore + hydrationScore), 0, 100);
+  }, [liveMetrics]);
+
+  const macbookAlertCount = intensity.tone === 'high' ? 3 : intensity.tone === 'moderate' ? 2 : 1;
+
   useEffect(() => {
     const id = setInterval(() => {
       setActiveTestimonial((prev) => (prev + 1) % testimonials.length);
     }, 6000);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    if (trackerPaused) return undefined;
+
+    const id = setInterval(() => {
+      const mode = trackerModes[trackerMode];
+      setLiveMetrics((prev) => {
+        const stepGain = Math.round(randomBetween(mode.stepRange[0], mode.stepRange[1]));
+        const nextHeartRate = clamp(Math.round(prev.heartRate + randomBetween(-4, 4) + (mode.hrCenter - prev.heartRate) * 0.12), 88, 176);
+        const nextCadence = clamp(Math.round(prev.cadence + randomBetween(-3, 3) + (mode.cadenceCenter - prev.cadence) * 0.2), 132, 190);
+        const paceCenter = (mode.paceRange[0] + mode.paceRange[1]) / 2;
+        const nextPace = clamp(
+          Number((prev.pace + randomBetween(-0.22, 0.22) + (paceCenter - prev.pace) * 0.1).toFixed(1)),
+          3.8,
+          8.4
+        );
+        const distanceGain = Number((stepGain * 0.00078).toFixed(2));
+        const next = {
+          heartRate: nextHeartRate,
+          cadence: nextCadence,
+          pace: nextPace,
+          steps: prev.steps + stepGain,
+          calories: prev.calories + Math.max(2, Math.round(stepGain * 0.11)),
+          distance: Number((prev.distance + distanceGain).toFixed(2)),
+          activeMinutes: prev.activeMinutes + (Math.random() > 0.35 ? 1 : 0),
+          hydration: clamp(prev.hydration - (Math.random() > 0.74 ? 1 : 0), 35, 100),
+          sleep: prev.sleep,
+        };
+
+        setHeartTrend((prevTrend) => [...prevTrend.slice(-11), nextHeartRate]);
+
+        if (Math.random() > 0.52) {
+          const eventMap = {
+            balanced: 'Cadence synced to sustainable pace.',
+            push: 'Interval spike detected. Recovery timer armed.',
+            recovery: 'Cooldown segment active. Heart rate easing.',
+          };
+          setActivityFeed((prevFeed) => [
+            { title: `${mode.label} mode`, detail: eventMap[trackerMode], time: formatClock() },
+            ...prevFeed,
+          ].slice(0, 6));
+        }
+
+        return next;
+      });
+    }, 2200);
+
+    return () => clearInterval(id);
+  }, [trackerMode, trackerPaused]);
 
   useEffect(() => {
     const onScroll = () => {
@@ -314,6 +425,7 @@ const Landing = () => {
           <span>VitalWatch</span>
         </Link>
         <nav className="landing-topbar-links">
+          <a href="#real-time">Live Tracker</a>
           <a href="#preview">Preview</a>
           <a href="#capabilities">Capabilities</a>
           <a href="#workflow">Workflow</a>
@@ -376,6 +488,121 @@ const Landing = () => {
         </div>
       </section>
 
+      <section className="landing-tracker landing-section" id="real-time">
+        <div className="landing-section-head">
+          <span>Real-time Fitness Console</span>
+          <h2>Dynamic tracker simulation with live movement, readiness, and intensity zones</h2>
+        </div>
+        <div className="landing-tracker-grid">
+          <div className="landing-tracker-core">
+            <div className="landing-tracker-status">
+              <div>
+                <p>Session mode</p>
+                <h3>{trackerModes[trackerMode].label}</h3>
+              </div>
+              <div className={`landing-intensity-badge ${intensity.tone}`}>
+                <span className={`dot ${trackerPaused ? 'paused' : ''}`} />
+                {trackerPaused ? 'Paused' : intensity.label}
+              </div>
+            </div>
+            <div className="landing-tracker-controls">
+              {Object.entries(trackerModes).map(([mode, config]) => (
+                <button
+                  key={mode}
+                  type="button"
+                  className={trackerMode === mode ? 'active' : ''}
+                  onClick={() => setTrackerMode(mode)}
+                >
+                  {config.label}
+                </button>
+              ))}
+              <button type="button" className="pause-btn" onClick={() => setTrackerPaused((prev) => !prev)}>
+                {trackerPaused ? 'Resume Live' : 'Pause Live'}
+              </button>
+            </div>
+            <div className="landing-tracker-metrics">
+              <article>
+                <p>Heart Rate</p>
+                <h4>{liveMetrics.heartRate} bpm</h4>
+              </article>
+              <article>
+                <p>Steps</p>
+                <h4>{liveMetrics.steps.toLocaleString()}</h4>
+              </article>
+              <article>
+                <p>Distance</p>
+                <h4>{liveMetrics.distance} km</h4>
+              </article>
+              <article>
+                <p>Calories</p>
+                <h4>{liveMetrics.calories}</h4>
+              </article>
+              <article>
+                <p>Pace</p>
+                <h4>{liveMetrics.pace} km/h</h4>
+              </article>
+              <article>
+                <p>Cadence</p>
+                <h4>{liveMetrics.cadence} spm</h4>
+              </article>
+            </div>
+            <div className="landing-trend-card">
+              <div className="landing-trend-head">
+                <p>Heart trend · last 24 sec</p>
+                <strong>{liveMetrics.heartRate} bpm</strong>
+              </div>
+              <div className="landing-trend-bars">
+                {heartTrend.map((point, idx) => (
+                  <span key={`${point}-${idx}`} style={{ height: `${clamp(((point - 80) / 100) * 100, 20, 100)}%` }} />
+                ))}
+              </div>
+            </div>
+          </div>
+          <aside className="landing-tracker-side">
+            <div className="landing-goal-card">
+              <p>Daily completion</p>
+              <h3>{goalCompletion}%</h3>
+              <small>{liveMetrics.activeMinutes} active mins · target 60 mins</small>
+            </div>
+            <div className="landing-ring-grid">
+              <div className="landing-ring-card">
+                <div className="ring" style={{ '--ring-fill': `${liveMetrics.hydration}%` }}>
+                  <span>{liveMetrics.hydration}%</span>
+                </div>
+                <p>Hydration</p>
+              </div>
+              <div className="landing-ring-card">
+                <div className="ring" style={{ '--ring-fill': `${liveMetrics.sleep}%` }}>
+                  <span>{liveMetrics.sleep}%</span>
+                </div>
+                <p>Sleep quality</p>
+              </div>
+              <div className="landing-ring-card">
+                <div className="ring" style={{ '--ring-fill': `${trackerReadiness}%` }}>
+                  <span>{trackerReadiness}%</span>
+                </div>
+                <p>Readiness</p>
+              </div>
+            </div>
+            <div className="landing-feed-card">
+              <div className="landing-feed-head">
+                <p>Live events</p>
+                <span>{trackerPaused ? 'Standby' : 'Streaming'}</span>
+              </div>
+              <div className="landing-feed-list">
+                {activityFeed.map((event, idx) => (
+                  <article key={`${event.time}-${idx}`}>
+                    <h4>{event.title}</h4>
+                    <p>{event.detail}</p>
+                    <small>{event.time}</small>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
       <section className="landing-device-showcase landing-section" id="preview">
         <div className="landing-section-head">
           <span>Product Preview</span>
@@ -395,18 +622,18 @@ const Landing = () => {
               <div className="macbook-ui-grid">
                 <article>
                   <h4>Heart Rate</h4>
-                  <strong>74 bpm</strong>
-                  <small>Stable • Last 5 min</small>
+                  <strong>{liveMetrics.heartRate} bpm</strong>
+                  <small>{intensity.label} • Last 5 min</small>
                 </article>
                 <article>
                   <h4>Systolic BP</h4>
-                  <strong>124 mmHg</strong>
-                  <small>Within safe range</small>
+                  <strong>{liveSystolic} mmHg</strong>
+                  <small>{liveSystolic > 135 ? 'Elevated trend' : 'Within safe range'}</small>
                 </article>
                 <article>
                   <h4>Alerts</h4>
-                  <strong>2 pending</strong>
-                  <small>1 moderate • 1 low</small>
+                  <strong>{macbookAlertCount} pending</strong>
+                  <small>{intensity.tone === 'high' ? '2 moderate • 1 high' : '1 moderate • 1 low'}</small>
                 </article>
               </div>
               <div className="macbook-ui-chart">

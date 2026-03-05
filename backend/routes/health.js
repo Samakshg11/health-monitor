@@ -1,6 +1,7 @@
 const express = require('express');
 const HealthReading = require('../models/HealthReading');
 const Alert = require('../models/Alert');
+const User = require('../models/User');
 const { protect } = require('../middleware/auth');
 
 const router = express.Router();
@@ -40,6 +41,20 @@ const generateAlerts = async (reading, userId, io) => {
       label: 'Blood Pressure',
       unit: 'mmHg',
     },
+    {
+      key: 'hydration',
+      value: reading.hydration?.value,
+      status: reading.hydration?.status,
+      label: 'Hydration',
+      unit: '%',
+    },
+    {
+      key: 'sleepScore',
+      value: reading.sleepScore?.value,
+      status: reading.sleepScore?.status,
+      label: 'Sleep Score',
+      unit: '%',
+    },
   ];
 
   for (const check of checks) {
@@ -60,6 +75,14 @@ const generateAlerts = async (reading, userId, io) => {
         bloodPressure: {
           warning: `Blood pressure ${check.value} mmHg is elevated`,
           critical: `CRITICAL: Blood pressure ${check.value} mmHg is dangerously high!`,
+        },
+        hydration: {
+          warning: `Hydration at ${check.value}% is below your healthy target range`,
+          critical: `CRITICAL: Hydration at ${check.value}% requires immediate rehydration`,
+        },
+        sleepScore: {
+          warning: `Sleep score ${check.value}% indicates reduced recovery`,
+          critical: `CRITICAL: Sleep score ${check.value}% indicates severe recovery debt`,
         },
       };
 
@@ -87,7 +110,21 @@ const generateAlerts = async (reading, userId, io) => {
 // @POST /api/health/reading - Submit new health reading
 router.post('/reading', protect, async (req, res) => {
   try {
-    const { heartRate, bloodPressure, spo2, temperature, steps, notes } = req.body;
+    const {
+      heartRate,
+      bloodPressure,
+      spo2,
+      temperature,
+      steps,
+      calories,
+      distance,
+      cadence,
+      activeMinutes,
+      hydration,
+      sleepScore,
+      workoutMode,
+      notes,
+    } = req.body;
 
     const reading = await HealthReading.create({
       user: req.user._id,
@@ -96,6 +133,13 @@ router.post('/reading', protect, async (req, res) => {
       spo2,
       temperature,
       steps,
+      calories,
+      distance,
+      cadence,
+      activeMinutes,
+      hydration,
+      sleepScore,
+      workoutMode,
       notes,
     });
 
@@ -174,10 +218,14 @@ router.get('/stats', protect, async (req, res) => {
     const spo2Vals = readings.filter((r) => r.spo2?.value).map((r) => r.spo2.value);
     const tempVals = readings.filter((r) => r.temperature?.value).map((r) => r.temperature.value);
     const stepsVals = readings.filter((r) => r.steps?.value).map((r) => r.steps.value);
+    const caloriesVals = readings.filter((r) => r.calories?.value).map((r) => r.calories.value);
+    const distanceVals = readings.filter((r) => r.distance?.value).map((r) => r.distance.value);
+    const activeMinutesVals = readings.filter((r) => r.activeMinutes?.value).map((r) => r.activeMinutes.value);
 
     const avg = (arr) => (arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1) : null);
     const max = (arr) => (arr.length ? Math.max(...arr) : null);
     const min = (arr) => (arr.length ? Math.min(...arr) : null);
+    const sum = (arr) => (arr.length ? arr.reduce((a, b) => a + b, 0) : 0);
 
     const stats = {
       heartRate: { avg: avg(hrVals), max: max(hrVals), min: min(hrVals), count: hrVals.length },
@@ -189,9 +237,24 @@ router.get('/stats', protect, async (req, res) => {
         count: tempVals.length,
       },
       steps: {
-        total: stepsVals.reduce((a, b) => a + b, 0),
+        total: sum(stepsVals),
         avg: avg(stepsVals),
         max: max(stepsVals),
+      },
+      calories: {
+        total: sum(caloriesVals),
+        avg: avg(caloriesVals),
+        max: max(caloriesVals),
+      },
+      distance: {
+        total: Number(sum(distanceVals).toFixed(2)),
+        avg: avg(distanceVals),
+        max: max(distanceVals),
+      },
+      activeMinutes: {
+        total: sum(activeMinutesVals),
+        avg: avg(activeMinutesVals),
+        max: max(activeMinutesVals),
       },
       totalReadings: readings.length,
     };
@@ -211,6 +274,110 @@ router.delete('/reading/:id', protect, async (req, res) => {
     });
     if (!reading) return res.status(404).json({ success: false, message: 'Reading not found' });
     res.json({ success: true, message: 'Reading deleted' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// @GET /api/health/fitness/today - Get today's fitness summary
+router.get('/fitness/today', protect, async (req, res) => {
+  try {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+
+    const [readings, latest, user] = await Promise.all([
+      HealthReading.find({
+        user: req.user._id,
+        recordedAt: { $gte: start },
+      }).sort({ recordedAt: 1 }),
+      HealthReading.findOne({ user: req.user._id }).sort({ recordedAt: -1 }),
+      User.findById(req.user._id).select('dailyGoals'),
+    ]);
+
+    const sum = (arr) => arr.reduce((a, b) => a + b, 0);
+    const avg = (arr) => (arr.length ? Number((sum(arr) / arr.length).toFixed(1)) : null);
+
+    const steps = readings.map((r) => r.steps?.value || 0);
+    const calories = readings.map((r) => r.calories?.value || 0);
+    const distance = readings.map((r) => r.distance?.value || 0);
+    const activeMinutes = readings.map((r) => r.activeMinutes?.value || 0);
+    const heartRate = readings.filter((r) => r.heartRate?.value).map((r) => r.heartRate.value);
+    const cadence = readings.filter((r) => r.cadence?.value).map((r) => r.cadence.value);
+
+    const goals = user?.dailyGoals || {
+      steps: 10000,
+      activeMinutes: 60,
+      hydration: 100,
+    };
+
+    const totals = {
+      steps: sum(steps),
+      calories: sum(calories),
+      distance: Number(sum(distance).toFixed(2)),
+      activeMinutes: sum(activeMinutes),
+    };
+
+    const progress = {
+      steps: goals.steps ? Math.min(100, Math.round((totals.steps / goals.steps) * 100)) : 0,
+      activeMinutes: goals.activeMinutes
+        ? Math.min(100, Math.round((totals.activeMinutes / goals.activeMinutes) * 100))
+        : 0,
+      hydration: latest?.hydration?.value || 0,
+    };
+
+    const summary = {
+      totals,
+      averages: {
+        heartRate: avg(heartRate),
+        cadence: avg(cadence),
+      },
+      latest: latest
+        ? {
+            hydration: latest.hydration?.value ?? null,
+            sleepScore: latest.sleepScore?.value ?? null,
+            workoutMode: latest.workoutMode || 'balanced',
+            heartRate: latest.heartRate?.value ?? null,
+            updatedAt: latest.recordedAt,
+          }
+        : null,
+      progress,
+      goals,
+      readingsCount: readings.length,
+    };
+
+    res.json({ success: true, summary });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// @GET /api/health/goals - Get user fitness goals
+router.get('/goals', protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('dailyGoals');
+    res.json({
+      success: true,
+      goals: user?.dailyGoals || { steps: 10000, activeMinutes: 60, hydration: 100 },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// @PUT /api/health/goals - Update user fitness goals
+router.put('/goals', protect, async (req, res) => {
+  try {
+    const nextGoals = {
+      steps: Number(req.body.steps) || 10000,
+      activeMinutes: Number(req.body.activeMinutes) || 60,
+      hydration: Number(req.body.hydration) || 100,
+    };
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { dailyGoals: nextGoals },
+      { new: true, runValidators: true }
+    ).select('dailyGoals');
+    res.json({ success: true, goals: user.dailyGoals });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

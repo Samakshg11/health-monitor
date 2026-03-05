@@ -46,6 +46,7 @@ router.post('/register', async (req, res) => {
         gender: user.gender,
         weight: user.weight,
         height: user.height,
+        dailyGoals: user.dailyGoals,
       },
     });
   } catch (err) {
@@ -83,6 +84,7 @@ router.post('/login', async (req, res) => {
         gender: user.gender,
         weight: user.weight,
         height: user.height,
+        dailyGoals: user.dailyGoals,
       },
     });
   } catch (err) {

@@ -43,7 +43,7 @@ const History = () => {
     <div>
       <div className="page-header">
         <h1>Reading History</h1>
-        <p>All your logged health readings · {total} total records</p>
+        <p>All your logged health and fitness readings · {total} total records</p>
       </div>
       <div className="page-content">
         <div className="card">
@@ -66,7 +66,11 @@ const History = () => {
                     <th>SpO₂</th>
                     <th>Temp</th>
                     <th>Steps</th>
-                    <th>Notes</th>
+                    <th>Calories</th>
+                    <th>Distance</th>
+                    <th>Mode</th>
+                    <th>Hydration</th>
+                    <th>Sleep</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -98,7 +102,11 @@ const History = () => {
                         ) : '—'}
                       </td>
                       <td>{r.steps && r.steps.value ? r.steps.value.toLocaleString() : '—'}</td>
-                      <td style={{ maxWidth: 180, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{r.notes || '—'}</td>
+                      <td>{r.calories && r.calories.value ? r.calories.value : '—'}</td>
+                      <td>{r.distance && r.distance.value ? `${r.distance.value} km` : '—'}</td>
+                      <td style={{ textTransform: 'capitalize' }}>{r.workoutMode || 'balanced'}</td>
+                      <td>{r.hydration && r.hydration.value ? `${r.hydration.value}%` : '—'}</td>
+                      <td>{r.sleepScore && r.sleepScore.value ? `${r.sleepScore.value}%` : '—'}</td>
                       <td>
                         <button onClick={() => handleDelete(r._id)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1rem' }} title="Delete">🗑️</button>
                       </td>
@@ -111,9 +119,9 @@ const History = () => {
 
           {totalPages > 1 && (
             <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 24 }}>
-              <button className="btn btn-secondary btn-sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>← Prev</button>
+              <button className="btn btn-secondary btn-sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>← Prev</button>
               <span style={{ padding: '8px 16px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Page {page} of {totalPages}</span>
-              <button className="btn btn-secondary btn-sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next →</button>
+              <button className="btn btn-secondary btn-sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next →</button>
             </div>
           )}
         </div>
