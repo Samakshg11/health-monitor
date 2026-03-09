@@ -13,6 +13,7 @@ import Alerts from './pages/Alerts';
 import Profile from './pages/Profile';
 import Billing from './pages/Billing';
 import Insights from './pages/Insights';
+import WearableSetup from './pages/WearableSetup';
 import Layout from './components/Layout';
 import './App.css';
 
@@ -86,6 +87,10 @@ function App() {
             <Route
               path="/insights"
               element={<PrivateRoute><Layout><Insights /></Layout></PrivateRoute>}
+            />
+            <Route
+              path="/wearable"
+              element={<PrivateRoute><Layout><WearableSetup /></Layout></PrivateRoute>}
             />
           </Routes>
         </Router>

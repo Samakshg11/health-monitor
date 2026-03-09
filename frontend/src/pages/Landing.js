@@ -1062,10 +1062,10 @@ const Landing = () => {
               ))}
             </ul>
             <div className="landing-wearable-actions">
-              <button type="button" className="btn btn-primary landing-btn" onClick={() => setDemoOpen(true)}>
+              <Link to="/wearable" className="btn btn-primary landing-btn">
                 Reserve VitalBand
-              </button>
-              <Link to="/register" className="btn btn-secondary landing-btn">
+              </Link>
+              <Link to="/wearable" className="btn btn-secondary landing-btn">
                 Bundle With Subscription
               </Link>
             </div>

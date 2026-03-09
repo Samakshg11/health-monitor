@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { getBillingCurrent, getBillingPlans, subscribePlan } from '../utils/api';
 import toast from 'react-hot-toast';
 
@@ -143,9 +144,9 @@ const Billing = () => {
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: '1.4rem', color: 'var(--accent-red)' }}>{formatINR(3999)}</div>
               <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>one-time hardware price</div>
-              <button type="button" className="btn btn-primary btn-sm" style={{ width: 'auto', marginTop: 10 }}>
+              <Link to="/wearable" className="btn btn-primary btn-sm" style={{ width: 'auto', marginTop: 10, display: 'inline-block' }}>
                 Reserve Wristband
-              </button>
+              </Link>
             </div>
           </div>
         </div>
