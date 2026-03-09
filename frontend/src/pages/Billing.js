@@ -130,6 +130,25 @@ const Billing = () => {
             );
           })}
         </div>
+
+        <div className="card" style={{ marginTop: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.08em' }}>Wearable Add-on</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.35rem' }}>VitalBand X1</div>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.86rem', marginTop: 6 }}>
+                Brand wristband for always-on tracking with direct dashboard sync.
+              </p>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '1.4rem', color: 'var(--accent-red)' }}>{formatINR(3999)}</div>
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>one-time hardware price</div>
+              <button type="button" className="btn btn-primary btn-sm" style={{ width: 'auto', marginTop: 10 }}>
+                Reserve Wristband
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

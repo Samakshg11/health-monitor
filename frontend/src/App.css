@@ -892,6 +892,7 @@ body {
 .landing-impact,
 .landing-testimonials,
 .landing-pricing,
+.landing-wearable,
 .landing-faq,
 .landing-final-cta {
   max-width: 1220px;
@@ -911,6 +912,7 @@ body {
 .landing-impact,
 .landing-testimonials,
 .landing-pricing,
+.landing-wearable,
 .landing-faq {
   margin-bottom: 58px;
 }
@@ -925,6 +927,7 @@ body {
 .landing-impact,
 .landing-testimonials,
 .landing-pricing,
+.landing-wearable,
 .landing-faq {
   border: 1px solid rgba(230, 57, 70, 0.12);
   border-radius: 20px;
@@ -1576,6 +1579,102 @@ body {
 
 .landing-pricing-card .landing-btn {
   margin-top: auto;
+}
+
+.landing-wearable-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: 14px;
+}
+
+.landing-wearable-showcase,
+.landing-wearable-specs {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(15, 15, 32, 0.84);
+  padding: 18px;
+}
+
+.landing-wearable-showcase {
+  display: grid;
+  place-items: center;
+  gap: 14px;
+  background: radial-gradient(circle at 30% 20%, rgba(230, 57, 70, 0.2), transparent 48%),
+    rgba(15, 15, 32, 0.86);
+}
+
+.wearable-ring {
+  width: 170px;
+  height: 170px;
+  border-radius: 50%;
+  border: 10px solid rgba(230, 57, 70, 0.34);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 0 0 8px rgba(230, 57, 70, 0.08), 0 0 28px rgba(230, 57, 70, 0.2);
+}
+
+.wearable-core {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(230, 57, 70, 0.2);
+  color: var(--accent-red);
+  font-size: 1.5rem;
+}
+
+.wearable-meta {
+  text-align: center;
+}
+
+.wearable-meta h3 {
+  font-family: var(--font-display);
+  margin-bottom: 6px;
+}
+
+.wearable-meta p {
+  color: var(--text-secondary);
+  font-size: 0.87rem;
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+
+.wearable-meta strong {
+  color: var(--accent-red);
+  font-family: var(--font-mono);
+}
+
+.landing-wearable-specs h3 {
+  font-family: var(--font-display);
+  margin-bottom: 10px;
+}
+
+.landing-wearable-specs ul {
+  list-style: none;
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.landing-wearable-specs li {
+  position: relative;
+  padding-left: 18px;
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+}
+
+.landing-wearable-specs li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: var(--accent-green);
+}
+
+.landing-wearable-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .landing-faq-list {
@@ -2329,6 +2428,7 @@ body {
   .landing-use-grid { grid-template-columns: 1fr 1fr; }
   .landing-trust-grid { grid-template-columns: 1fr; }
   .landing-roadmap-track { grid-template-columns: 1fr 1fr; }
+  .landing-wearable-grid { grid-template-columns: 1fr; }
   .landing-pricing-grid { grid-template-columns: 1fr 1fr; }
   .landing-workflow-grid { grid-template-columns: 1fr; }
   .landing-snapshot-card { grid-template-columns: 1fr; }
@@ -2373,6 +2473,7 @@ body {
   .landing-capability-grid { grid-template-columns: 1fr; }
   .landing-use-grid { grid-template-columns: 1fr; }
   .landing-roadmap-track { grid-template-columns: 1fr; }
+  .landing-wearable-grid { grid-template-columns: 1fr; }
   .landing-pricing-grid { grid-template-columns: 1fr; }
   .landing-workflow-grid { grid-template-columns: 1fr; }
   .landing-snapshot-card { grid-template-columns: 1fr; }

@@ -153,6 +153,13 @@ const rolloutSteps = [
   { phase: 'Week 4', title: 'Scale Rollout', note: 'Expand to full operations with SLA review and governance checks.' },
 ];
 
+const wearableSpecs = [
+  '24x7 pulse and activity stream',
+  'Sleep + stress trend detection',
+  '7-day battery with magnetic dock',
+  'IP67 splash and sweat resistance',
+];
+
 const getRiskBand = (age, sys, hr) => {
   let score = 0;
   if (age >= 60) score += 2;
@@ -1025,6 +1032,44 @@ const Landing = () => {
               )}
             </article>
           ))}
+        </div>
+      </section>
+
+      <section className="landing-wearable landing-section" id="wearable">
+        <div className="landing-section-head">
+          <span>Hardware Ecosystem</span>
+          <h2>Meet VitalBand X1, our branded health wristband for continuous tracking</h2>
+        </div>
+        <div className="landing-wearable-grid">
+          <article className="landing-wearable-showcase">
+            <div className="wearable-ring">
+              <div className="wearable-core">♥</div>
+            </div>
+            <div className="wearable-meta">
+              <h3>VitalBand X1</h3>
+              <p>
+                Seamless sync with VitalWatch dashboards, alerts, and insights so your monitoring stack
+                feels complete from device to decision.
+              </p>
+              <strong>Starting at {formatINR(3999)}</strong>
+            </div>
+          </article>
+          <article className="landing-wearable-specs">
+            <h3>What you get with the wristband</h3>
+            <ul>
+              {wearableSpecs.map((spec) => (
+                <li key={spec}>{spec}</li>
+              ))}
+            </ul>
+            <div className="landing-wearable-actions">
+              <button type="button" className="btn btn-primary landing-btn" onClick={() => setDemoOpen(true)}>
+                Reserve VitalBand
+              </button>
+              <Link to="/register" className="btn btn-secondary landing-btn">
+                Bundle With Subscription
+              </Link>
+            </div>
+          </article>
         </div>
       </section>
 
