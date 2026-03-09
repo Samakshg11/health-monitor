@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { getLatestReading } from '../utils/api';
+import { useAuth } from '../context/AuthContext';
 
 const confidenceTone = (value) => {
   if (value >= 80) return { label: 'High', color: 'var(--accent-green)' };
@@ -9,8 +10,7 @@ const confidenceTone = (value) => {
 };
 
 const WearableSetup = () => {
-  const [paired, setPaired] = useState(localStorage.getItem('vw_wearable_paired') === 'true');
-  const [battery, setBattery] = useState(Number(localStorage.getItem('vw_wearable_battery') || 87));
+  const { wearable, pairWearable, unpairWearable, requestSensorPermissions } = useAuth();
   const [latest, setLatest] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -28,30 +28,19 @@ const WearableSetup = () => {
     return () => clearInterval(id);
   }, []);
 
-  useEffect(() => {
-    if (!paired) return undefined;
-    const id = setInterval(() => {
-      setBattery((prev) => {
-        const next = Math.max(8, prev - (Math.random() > 0.7 ? 1 : 0));
-        localStorage.setItem('vw_wearable_battery', String(next));
-        return next;
-      });
-    }, 60000);
-    return () => clearInterval(id);
-  }, [paired]);
-
   const onPair = () => {
-    setPaired(true);
-    setBattery(91);
-    localStorage.setItem('vw_wearable_paired', 'true');
-    localStorage.setItem('vw_wearable_battery', '91');
+    pairWearable();
     toast.success('VitalBand X1 paired successfully');
   };
 
   const onUnpair = () => {
-    setPaired(false);
-    localStorage.setItem('vw_wearable_paired', 'false');
+    unpairWearable();
     toast.success('Device disconnected');
+  };
+
+  const onPermissions = async () => {
+    await requestSensorPermissions();
+    toast.success('Permission check completed');
   };
 
   const syncHealth = useMemo(() => {
@@ -60,8 +49,15 @@ const WearableSetup = () => {
     return { value: overall, ...confidenceTone(overall) };
   }, [latest]);
 
-  const source = latest?.source || 'estimated';
-  const lastSync = latest?.recordedAt ? new Date(latest.recordedAt).toLocaleString() : 'No sync yet';
+  const source = wearable.sourceMode || latest?.source || 'estimated';
+  const lastSync = wearable.lastSyncAt ? new Date(wearable.lastSyncAt).toLocaleString() : 'No sync yet';
+  const syncLabel = wearable.lastSyncStatus === 'ok'
+    ? 'Connected and syncing'
+    : wearable.lastSyncStatus === 'error'
+      ? 'Connected, sync retrying'
+      : wearable.paired
+        ? 'Connected, waiting for first sync'
+        : 'Not connected';
 
   return (
     <div>
@@ -77,11 +73,14 @@ const WearableSetup = () => {
               <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.08em' }}>Device</div>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.35rem' }}>VitalBand X1</div>
               <div style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', marginTop: 4 }}>
-                Status: {paired ? 'Connected' : 'Not connected'}
+                Status: {syncLabel}
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {paired ? (
+              <button type="button" className="btn btn-secondary btn-sm" style={{ width: 'auto' }} onClick={onPermissions}>
+                Check Permissions
+              </button>
+              {wearable.paired ? (
                 <button type="button" className="btn btn-secondary btn-sm" style={{ width: 'auto' }} onClick={onUnpair}>
                   Disconnect
                 </button>
@@ -96,20 +95,42 @@ const WearableSetup = () => {
 
         <div className="stats-grid" style={{ marginBottom: 20 }}>
           <div className="stat-card">
-            <div className="stat-value">{paired ? `${battery}%` : '—'}</div>
+            <div className="stat-value">{wearable.paired ? `${wearable.battery}%` : '—'}</div>
             <div className="stat-label">Battery</div>
           </div>
           <div className="stat-card">
-            <div className="stat-value" style={{ color: syncHealth.color }}>{paired ? syncHealth.value : '—'}</div>
+            <div className="stat-value" style={{ color: syncHealth.color }}>{wearable.paired ? syncHealth.value : '—'}</div>
             <div className="stat-label">Sync Confidence</div>
           </div>
           <div className="stat-card">
-            <div className="stat-value" style={{ textTransform: 'capitalize' }}>{paired ? source : '—'}</div>
+            <div className="stat-value" style={{ textTransform: 'capitalize' }}>{wearable.paired ? source : '—'}</div>
             <div className="stat-label">Data Source</div>
           </div>
           <div className="stat-card">
-            <div className="stat-value" style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>{paired ? lastSync : '—'}</div>
+            <div className="stat-value" style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>{wearable.paired ? lastSync : '—'}</div>
             <div className="stat-label">Last Sync</div>
+          </div>
+        </div>
+
+        <div className="card" style={{ marginBottom: 20 }}>
+          <h3 style={{ marginBottom: 12 }}>Setup Checklist</h3>
+          <div className="stats-grid" style={{ marginBottom: 0 }}>
+            <div className="stat-card">
+              <div className="stat-value" style={{ fontSize: '1rem' }}>{wearable.paired ? 'Done' : 'Pending'}</div>
+              <div className="stat-label">Device Pairing</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-value" style={{ fontSize: '1rem', textTransform: 'capitalize' }}>{wearable.sensorStatus.geoPermission}</div>
+              <div className="stat-label">Location Permission</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-value" style={{ fontSize: '1rem', textTransform: 'capitalize' }}>{wearable.sensorStatus.motionPermission}</div>
+              <div className="stat-label">Motion Permission</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-value" style={{ fontSize: '1rem' }}>{wearable.sensorStatus.hasGeo || wearable.sensorStatus.hasMotion ? 'Live' : 'Idle'}</div>
+              <div className="stat-label">Sensor Feed</div>
+            </div>
           </div>
         </div>
 
@@ -144,7 +165,8 @@ const WearableSetup = () => {
             </div>
           )}
           <p style={{ marginTop: 10, color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-            Confidence is higher when motion and location signals are available. Low-confidence vitals are softened in alerts.
+            Confidence is higher when motion and location signals are available and the wearable is paired.
+            Low-confidence vitals are softened in alerts for safer triage.
           </p>
         </div>
       </div>

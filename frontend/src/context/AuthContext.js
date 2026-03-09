@@ -23,6 +23,21 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
+  const [wearablePaired, setWearablePaired] = useState(localStorage.getItem('vw_wearable_paired') === 'true');
+  const [wearableBattery, setWearableBattery] = useState(Number(localStorage.getItem('vw_wearable_battery') || 87));
+  const [lastSyncAt, setLastSyncAt] = useState(null);
+  const [lastSyncStatus, setLastSyncStatus] = useState('idle');
+  const [sensorStatus, setSensorStatus] = useState({
+    geoPermission: 'unknown',
+    motionPermission: 'unknown',
+    hasGeo: false,
+    hasMotion: false,
+    motionSeenAt: 0,
+  });
+  const wearableRef = useRef({
+    paired: localStorage.getItem('vw_wearable_paired') === 'true',
+    battery: Number(localStorage.getItem('vw_wearable_battery') || 87),
+  });
   const sensorRef = useRef({
     motionScore: 0,
     motionSeenAt: 0,
@@ -45,6 +60,96 @@ export const AuthProvider = ({ children }) => {
     stress: 34,
   });
 
+  const syncWearableState = (next) => {
+    wearableRef.current = { ...wearableRef.current, ...next };
+    if (Object.prototype.hasOwnProperty.call(next, 'paired')) {
+      setWearablePaired(Boolean(next.paired));
+      localStorage.setItem('vw_wearable_paired', String(Boolean(next.paired)));
+    }
+    if (Object.prototype.hasOwnProperty.call(next, 'battery')) {
+      const safeBattery = clamp(Number(next.battery), 1, 100);
+      setWearableBattery(safeBattery);
+      localStorage.setItem('vw_wearable_battery', String(safeBattery));
+    }
+  };
+
+  const pairWearable = () => {
+    syncWearableState({ paired: true, battery: 92 });
+  };
+
+  const unpairWearable = () => {
+    syncWearableState({ paired: false });
+  };
+
+  const refreshSensorPermissionState = async () => {
+    const next = {
+      geoPermission: sensorStatus.geoPermission,
+      motionPermission: sensorStatus.motionPermission,
+    };
+
+    try {
+      if (navigator.permissions?.query) {
+        const geo = await navigator.permissions.query({ name: 'geolocation' });
+        next.geoPermission = geo.state;
+      }
+    } catch {}
+
+    if (typeof window !== 'undefined' && 'DeviceMotionEvent' in window) {
+      if (typeof window.DeviceMotionEvent.requestPermission === 'function') {
+        next.motionPermission = 'prompt';
+      } else {
+        next.motionPermission = 'granted';
+      }
+    } else {
+      next.motionPermission = 'unsupported';
+    }
+
+    setSensorStatus((prev) => ({ ...prev, ...next }));
+  };
+
+  const requestSensorPermissions = async () => {
+    let geoPermission = sensorStatus.geoPermission;
+    let motionPermission = sensorStatus.motionPermission;
+
+    try {
+      await new Promise((resolve) => {
+        if (!navigator.geolocation) {
+          geoPermission = 'unsupported';
+          resolve();
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          () => {
+            geoPermission = 'granted';
+            resolve();
+          },
+          () => {
+            geoPermission = 'denied';
+            resolve();
+          },
+          { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 }
+        );
+      });
+    } catch {}
+
+    try {
+      if (typeof window !== 'undefined' && 'DeviceMotionEvent' in window) {
+        if (typeof window.DeviceMotionEvent.requestPermission === 'function') {
+          const result = await window.DeviceMotionEvent.requestPermission();
+          motionPermission = result === 'granted' ? 'granted' : 'denied';
+        } else {
+          motionPermission = 'granted';
+        }
+      } else {
+        motionPermission = 'unsupported';
+      }
+    } catch {
+      motionPermission = 'denied';
+    }
+
+    setSensorStatus((prev) => ({ ...prev, geoPermission, motionPermission }));
+  };
+
   // Load user on mount
   useEffect(() => {
     const loadUser = async () => {
@@ -65,6 +170,11 @@ export const AuthProvider = ({ children }) => {
     };
     loadUser();
   }, [token]);
+
+  useEffect(() => {
+    refreshSensorPermissionState();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!user || !token) return undefined;
@@ -93,8 +203,15 @@ export const AuthProvider = ({ children }) => {
           }
           sensorRef.current.lastGeo = next;
           sensorRef.current.hasGeo = true;
+          setSensorStatus((prev) => ({ ...prev, hasGeo: true, geoPermission: 'granted' }));
         },
-        () => {},
+        () => {
+          setSensorStatus((prev) => ({
+            ...prev,
+            hasGeo: false,
+            geoPermission: prev.geoPermission === 'unknown' ? 'denied' : prev.geoPermission,
+          }));
+        },
         { enableHighAccuracy: false, maximumAge: 15000, timeout: 12000 }
       );
     }
@@ -108,6 +225,7 @@ export const AuthProvider = ({ children }) => {
       sensorRef.current.motionScore = clamp(sensorRef.current.motionScore * 0.72 + movement * 0.28, 0, 5);
       sensorRef.current.motionSeenAt = Date.now();
       sensorRef.current.hasMotion = true;
+      setSensorStatus((prev) => ({ ...prev, hasMotion: true, motionSeenAt: Date.now() }));
     };
 
     if (typeof window !== 'undefined' && 'DeviceMotionEvent' in window) {
@@ -122,6 +240,7 @@ export const AuthProvider = ({ children }) => {
       const profile = modeTemplates[mode];
       const current = trackerRef.current;
       const sensors = sensorRef.current;
+      const isPaired = wearableRef.current.paired;
 
       const heartRate = clamp(Math.round(current.heartRate + rand(-4, 4) + (rand(profile.hr[0], profile.hr[1]) - current.heartRate) * 0.2), 88, 176);
       const systolic = clamp(Math.round(current.systolic + rand(-3, 3) + (heartRate - 118) * 0.08), 104, 154);
@@ -145,10 +264,11 @@ export const AuthProvider = ({ children }) => {
       const distanceEstimate = Number(clamp(geoDistance > 0 ? geoDistance : stepsValue * 0.00072 + rand(-0.03, 0.05), 0.03, 0.9).toFixed(2));
       const activeMinutesValue = stepsValue > 95 || geoDistance > 0.05 || freshMotion ? 1 : 0;
 
-      const activityConfidence = sensors.hasGeo && sensors.hasMotion ? 88 : sensors.hasGeo || sensors.hasMotion ? 72 : 48;
-      const vitalsConfidence = sensors.hasMotion ? 56 : 42;
-      const sleepConfidence = 62;
-      const stressConfidence = sensors.hasMotion ? 58 : 45;
+      const activityConfidenceBase = sensors.hasGeo && sensors.hasMotion ? 88 : sensors.hasGeo || sensors.hasMotion ? 72 : 48;
+      const activityConfidence = clamp(activityConfidenceBase + (isPaired ? 8 : 0), 45, 96);
+      const vitalsConfidence = clamp((sensors.hasMotion ? 56 : 42) + (isPaired ? 28 : 0), 40, 93);
+      const sleepConfidence = clamp(62 + (isPaired ? 12 : 0), 48, 92);
+      const stressConfidence = clamp((sensors.hasMotion ? 58 : 45) + (isPaired ? 20 : 0), 42, 92);
       const overallConfidence = Math.round(
         (activityConfidence * 0.38 + vitalsConfidence * 0.36 + sleepConfidence * 0.14 + stressConfidence * 0.12)
       );
@@ -181,7 +301,7 @@ export const AuthProvider = ({ children }) => {
         sleepScore: { value: sleep },
         sleepHours: { value: sleepHours },
         stressLevel: { value: stress },
-        source: 'estimated',
+        source: isPaired ? 'device' : 'estimated',
         confidence: {
           overall: overallConfidence,
           heartRate: vitalsConfidence,
@@ -197,12 +317,20 @@ export const AuthProvider = ({ children }) => {
           stressLevel: stressConfidence,
         },
         workoutMode: mode,
-        notes: `Auto tracker sync · ${mode} · conf ${overallConfidence}%`,
+        notes: `${isPaired ? 'VitalBand sync' : 'Phone estimate sync'} · ${mode} · conf ${overallConfidence}%`,
       };
 
       try {
         await API.post('/health/reading', payload);
+        setLastSyncAt(new Date().toISOString());
+        setLastSyncStatus('ok');
+        if (isPaired) {
+          syncWearableState({
+            battery: wearableRef.current.battery - (Math.random() > 0.72 ? 1 : 0),
+          });
+        }
       } catch (err) {
+        setLastSyncStatus('error');
         if (err?.response?.status !== 402) {
           // Keep silent for transient network issues; stream retries automatically.
           console.debug('Auto tracker sync skipped', err?.message || err);
@@ -268,7 +396,28 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, updateProfile }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        loading,
+        login,
+        register,
+        logout,
+        updateProfile,
+        wearable: {
+          paired: wearablePaired,
+          battery: wearableBattery,
+          lastSyncAt,
+          lastSyncStatus,
+          sourceMode: wearablePaired ? 'device' : 'estimated',
+          sensorStatus,
+        },
+        pairWearable,
+        unpairWearable,
+        requestSensorPermissions,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
