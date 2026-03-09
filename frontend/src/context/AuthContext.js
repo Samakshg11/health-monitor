@@ -7,11 +7,30 @@ export const useAuth = () => useContext(AuthContext);
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const rand = (min, max) => Math.random() * (max - min) + min;
+const toRad = (deg) => (deg * Math.PI) / 180;
+const haversineKm = (a, b) => {
+  if (!a || !b) return 0;
+  const R = 6371;
+  const dLat = toRad(b.lat - a.lat);
+  const dLon = toRad(b.lon - a.lon);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const x = Math.sin(dLat / 2) ** 2 + Math.sin(dLon / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
+  return 2 * R * Math.asin(Math.sqrt(x));
+};
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
+  const sensorRef = useRef({
+    motionScore: 0,
+    motionSeenAt: 0,
+    distanceSinceLastKm: 0,
+    lastGeo: null,
+    hasGeo: false,
+    hasMotion: false,
+  });
   const trackerRef = useRef({
     mode: 'balanced',
     heartRate: 118,
@@ -56,6 +75,45 @@ export const AuthProvider = ({ children }) => {
       recovery: { hr: [92, 118], cadence: [136, 154], pace: [6.7, 7.8], steps: [80, 160] },
     };
 
+    let geoWatchId;
+    if (navigator.geolocation) {
+      geoWatchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          const next = {
+            lat: pos.coords.latitude,
+            lon: pos.coords.longitude,
+            ts: pos.timestamp,
+          };
+          const prev = sensorRef.current.lastGeo;
+          if (prev) {
+            const delta = haversineKm(prev, next);
+            if (delta > 0 && delta < 0.25) {
+              sensorRef.current.distanceSinceLastKm += delta;
+            }
+          }
+          sensorRef.current.lastGeo = next;
+          sensorRef.current.hasGeo = true;
+        },
+        () => {},
+        { enableHighAccuracy: false, maximumAge: 15000, timeout: 12000 }
+      );
+    }
+
+    const onMotion = (event) => {
+      const ax = event.accelerationIncludingGravity?.x ?? 0;
+      const ay = event.accelerationIncludingGravity?.y ?? 0;
+      const az = event.accelerationIncludingGravity?.z ?? 0;
+      const magnitude = Math.sqrt(ax * ax + ay * ay + az * az);
+      const movement = Math.max(0, Math.min(5, Math.abs(magnitude - 9.8)));
+      sensorRef.current.motionScore = clamp(sensorRef.current.motionScore * 0.72 + movement * 0.28, 0, 5);
+      sensorRef.current.motionSeenAt = Date.now();
+      sensorRef.current.hasMotion = true;
+    };
+
+    if (typeof window !== 'undefined' && 'DeviceMotionEvent' in window) {
+      window.addEventListener('devicemotion', onMotion);
+    }
+
     const postAutoReading = async () => {
       const now = new Date();
       const hour = now.getHours();
@@ -63,6 +121,7 @@ export const AuthProvider = ({ children }) => {
       const mode = Math.random() > 0.82 ? 'push' : dayMode;
       const profile = modeTemplates[mode];
       const current = trackerRef.current;
+      const sensors = sensorRef.current;
 
       const heartRate = clamp(Math.round(current.heartRate + rand(-4, 4) + (rand(profile.hr[0], profile.hr[1]) - current.heartRate) * 0.2), 88, 176);
       const systolic = clamp(Math.round(current.systolic + rand(-3, 3) + (heartRate - 118) * 0.08), 104, 154);
@@ -75,6 +134,24 @@ export const AuthProvider = ({ children }) => {
       const sleepHours = Number(clamp(current.sleepHours + rand(-0.18, 0.16), 4.3, 9.1).toFixed(1));
       const stressBias = mode === 'push' ? 10 : mode === 'balanced' ? 2 : -7;
       const stress = clamp(Math.round(current.stress + rand(-6, 5) + stressBias), 12, 92);
+
+      const freshMotion = Date.now() - sensors.motionSeenAt < 45000;
+      const motionBoost = freshMotion ? sensors.motionScore * 38 : 0;
+      const geoDistance = sensors.distanceSinceLastKm;
+      sensorRef.current.distanceSinceLastKm = 0;
+
+      const baseSteps = rand(profile.steps[0], profile.steps[1]);
+      const stepsValue = Math.round(clamp(baseSteps + motionBoost + geoDistance * 1150, 35, 420));
+      const distanceEstimate = Number(clamp(geoDistance > 0 ? geoDistance : stepsValue * 0.00072 + rand(-0.03, 0.05), 0.03, 0.9).toFixed(2));
+      const activeMinutesValue = stepsValue > 95 || geoDistance > 0.05 || freshMotion ? 1 : 0;
+
+      const activityConfidence = sensors.hasGeo && sensors.hasMotion ? 88 : sensors.hasGeo || sensors.hasMotion ? 72 : 48;
+      const vitalsConfidence = sensors.hasMotion ? 56 : 42;
+      const sleepConfidence = 62;
+      const stressConfidence = sensors.hasMotion ? 58 : 45;
+      const overallConfidence = Math.round(
+        (activityConfidence * 0.38 + vitalsConfidence * 0.36 + sleepConfidence * 0.14 + stressConfidence * 0.12)
+      );
 
       trackerRef.current = {
         mode,
@@ -95,17 +172,32 @@ export const AuthProvider = ({ children }) => {
         bloodPressure: { systolic, diastolic },
         spo2: { value: spo2 },
         temperature: { value: temperature },
-        steps: { value: Math.round(rand(profile.steps[0], profile.steps[1])) },
+        steps: { value: stepsValue },
         calories: { value: Math.round(rand(14, 42)) },
-        distance: { value: Number(rand(0.12, 0.48).toFixed(2)) },
+        distance: { value: distanceEstimate },
         cadence: { value: cadence },
-        activeMinutes: { value: Math.random() > 0.38 ? 1 : 0 },
+        activeMinutes: { value: activeMinutesValue },
         hydration: { value: hydration },
         sleepScore: { value: sleep },
         sleepHours: { value: sleepHours },
         stressLevel: { value: stress },
+        source: 'estimated',
+        confidence: {
+          overall: overallConfidence,
+          heartRate: vitalsConfidence,
+          bloodPressure: vitalsConfidence,
+          spo2: vitalsConfidence - 2,
+          temperature: vitalsConfidence,
+          steps: activityConfidence,
+          distance: activityConfidence,
+          activeMinutes: activityConfidence,
+          hydration: 55,
+          sleepScore: sleepConfidence,
+          sleepHours: sleepConfidence,
+          stressLevel: stressConfidence,
+        },
         workoutMode: mode,
-        notes: `Auto tracker sync · ${mode}`,
+        notes: `Auto tracker sync · ${mode} · conf ${overallConfidence}%`,
       };
 
       try {
@@ -123,6 +215,10 @@ export const AuthProvider = ({ children }) => {
     return () => {
       clearTimeout(startup);
       clearInterval(interval);
+      if (geoWatchId !== undefined) navigator.geolocation.clearWatch(geoWatchId);
+      if (typeof window !== 'undefined' && 'DeviceMotionEvent' in window) {
+        window.removeEventListener('devicemotion', onMotion);
+      }
     };
   }, [user, token]);
 

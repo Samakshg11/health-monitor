@@ -9,7 +9,16 @@ const alertSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['heartRate', 'bloodPressure', 'spo2', 'temperature', 'steps'],
+      enum: [
+        'heartRate',
+        'bloodPressure',
+        'spo2',
+        'temperature',
+        'steps',
+        'hydration',
+        'sleepScore',
+        'stressLevel',
+      ],
       required: true,
     },
     severity: {

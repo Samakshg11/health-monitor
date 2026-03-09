@@ -55,6 +55,25 @@ const healthReadingSchema = new mongoose.Schema(
       value: { type: Number }, // percentage
       status: { type: String, enum: ['normal', 'warning', 'critical'], default: 'normal' },
     },
+    source: {
+      type: String,
+      enum: ['manual', 'estimated', 'device'],
+      default: 'manual',
+    },
+    confidence: {
+      overall: { type: Number }, // 0-100
+      heartRate: { type: Number },
+      bloodPressure: { type: Number },
+      spo2: { type: Number },
+      temperature: { type: Number },
+      steps: { type: Number },
+      distance: { type: Number },
+      activeMinutes: { type: Number },
+      hydration: { type: Number },
+      sleepScore: { type: Number },
+      sleepHours: { type: Number },
+      stressLevel: { type: Number },
+    },
     workoutMode: {
       type: String,
       enum: ['balanced', 'push', 'recovery'],

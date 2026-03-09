@@ -7,6 +7,19 @@ const { getPlan } = require('../config/plans');
 
 const router = express.Router();
 
+const metricConfidence = (reading, key) => {
+  const explicit = reading?.confidence?.[key];
+  if (typeof explicit === 'number') return explicit;
+  if (typeof reading?.confidence?.overall === 'number') return reading.confidence.overall;
+  return 100;
+};
+
+const shouldSoftenEstimatedAlert = (reading, key) => {
+  if (reading?.source !== 'estimated') return false;
+  const vitalKeys = ['heartRate', 'bloodPressure', 'spo2', 'temperature', 'stressLevel'];
+  return vitalKeys.includes(key);
+};
+
 // Helper: generate alerts from a reading
 const generateAlerts = async (reading, userId, io) => {
   const alerts = [];
@@ -67,6 +80,11 @@ const generateAlerts = async (reading, userId, io) => {
 
   for (const check of checks) {
     if (check.value !== undefined && check.status && check.status !== 'normal') {
+      const confidence = metricConfidence(reading, check.key);
+      if (shouldSoftenEstimatedAlert(reading, check.key) && confidence < 40) {
+        continue;
+      }
+
       const messages = {
         heartRate: {
           warning: `Heart rate ${check.value} BPM is outside normal range (60-100 BPM)`,
@@ -98,11 +116,22 @@ const generateAlerts = async (reading, userId, io) => {
         },
       };
 
+      const adjustedSeverity =
+        shouldSoftenEstimatedAlert(reading, check.key) && check.status === 'critical' && confidence < 70
+          ? 'warning'
+          : check.status;
+
+      const note =
+        shouldSoftenEstimatedAlert(reading, check.key) && confidence < 70
+          ? ' (estimated signal, low confidence)'
+          : '';
+
       const alert = await Alert.create({
         user: userId,
         type: check.key,
-        severity: check.status,
-        message: messages[check.key]?.[check.status] || `${check.label} is ${check.status}`,
+        severity: adjustedSeverity,
+        message:
+          `${messages[check.key]?.[adjustedSeverity] || `${check.label} is ${adjustedSeverity}`}${note}`,
         value: `${check.value} ${check.unit}`,
         readingId: reading._id,
       });
@@ -157,6 +186,8 @@ router.post('/reading', protect, async (req, res) => {
       sleepScore,
       sleepHours,
       stressLevel,
+      source,
+      confidence,
       workoutMode,
       notes,
     } = req.body;
@@ -176,6 +207,8 @@ router.post('/reading', protect, async (req, res) => {
       sleepScore,
       sleepHours,
       stressLevel,
+      source,
+      confidence,
       workoutMode,
       notes,
     });
