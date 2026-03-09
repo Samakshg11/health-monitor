@@ -27,7 +27,6 @@ const Layout = ({ children }) => {
 
   const navItems = [
     { to: '/dashboard', icon: '📊', label: 'Dashboard' },
-    { to: '/log', icon: '➕', label: 'Log Reading' },
     { to: '/history', icon: '📋', label: 'History' },
     { to: '/reports', icon: '📈', label: 'Reports' },
     { to: '/insights', icon: '🧠', label: 'Insights' },

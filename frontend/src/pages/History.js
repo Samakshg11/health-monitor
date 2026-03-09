@@ -53,7 +53,7 @@ const History = () => {
             <div className="empty-state">
               <div className="empty-state-icon">📋</div>
               <h3>No readings found</h3>
-              <p>Start logging readings to see them here</p>
+              <p>Auto-tracker readings will appear here once sync starts.</p>
             </div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
@@ -71,6 +71,8 @@ const History = () => {
                     <th>Mode</th>
                     <th>Hydration</th>
                     <th>Sleep</th>
+                    <th>Sleep Hrs</th>
+                    <th>Stress</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -107,6 +109,12 @@ const History = () => {
                       <td style={{ textTransform: 'capitalize' }}>{r.workoutMode || 'balanced'}</td>
                       <td>{r.hydration && r.hydration.value ? `${r.hydration.value}%` : '—'}</td>
                       <td>{r.sleepScore && r.sleepScore.value ? `${r.sleepScore.value}%` : '—'}</td>
+                      <td>{r.sleepHours && r.sleepHours.value ? `${r.sleepHours.value} h` : '—'}</td>
+                      <td>
+                        {r.stressLevel && r.stressLevel.value ? (
+                          <><StatusDot status={r.stressLevel.status} />{r.stressLevel.value}%</>
+                        ) : '—'}
+                      </td>
                       <td>
                         <button onClick={() => handleDelete(r._id)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1rem' }} title="Delete">🗑️</button>
                       </td>

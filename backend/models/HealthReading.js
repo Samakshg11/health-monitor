@@ -48,6 +48,13 @@ const healthReadingSchema = new mongoose.Schema(
       value: { type: Number }, // percentage
       status: { type: String, enum: ['normal', 'warning', 'critical'], default: 'normal' },
     },
+    sleepHours: {
+      value: { type: Number }, // hours
+    },
+    stressLevel: {
+      value: { type: Number }, // percentage
+      status: { type: String, enum: ['normal', 'warning', 'critical'], default: 'normal' },
+    },
     workoutMode: {
       type: String,
       enum: ['balanced', 'push', 'recovery'],
@@ -111,6 +118,14 @@ healthReadingSchema.pre('save', function (next) {
     if (sleep < 60) this.sleepScore.status = 'critical';
     else if (sleep < 75) this.sleepScore.status = 'warning';
     else this.sleepScore.status = 'normal';
+  }
+
+  // Stress level: normal <=45, warning 46-69, critical >=70
+  if (this.stressLevel?.value !== undefined) {
+    const stress = this.stressLevel.value;
+    if (stress >= 70) this.stressLevel.status = 'critical';
+    else if (stress > 45) this.stressLevel.status = 'warning';
+    else this.stressLevel.status = 'normal';
   }
 
   next();

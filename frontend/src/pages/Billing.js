@@ -2,6 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { getBillingCurrent, getBillingPlans, subscribePlan } from '../utils/api';
 import toast from 'react-hot-toast';
 
+const formatINR = (amount) =>
+  new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format(amount || 0);
+
 const Billing = () => {
   const [plans, setPlans] = useState([]);
   const [current, setCurrent] = useState(null);
@@ -103,7 +110,7 @@ const Billing = () => {
                     : `${plan.limits.readingsPerMonth} readings/month with guided monitoring.`}
                 </p>
                 <h4>
-                  ${price}
+                  {formatINR(price)}
                   <span>/mo</span>
                 </h4>
                 <ul>

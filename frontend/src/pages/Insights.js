@@ -91,6 +91,14 @@ const Insights = () => {
             <div className="stat-value">{averages.sleepScore ?? '—'}</div>
             <div className="stat-label">Avg Sleep Score</div>
           </div>
+          <div className="stat-card">
+            <div className="stat-value">{averages.sleepHours ?? '—'}</div>
+            <div className="stat-label">Avg Sleep Hours</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-value">{averages.stressLevel ?? '—'}</div>
+            <div className="stat-label">Avg Stress Level</div>
+          </div>
         </div>
 
         <div className="card">

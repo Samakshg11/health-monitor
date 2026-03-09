@@ -2,20 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
-import { getLatestReading, getReadings, getFitnessToday, submitReading, getBillingCurrent } from '../utils/api';
+import { getLatestReading, getReadings, getFitnessToday, getBillingCurrent } from '../utils/api';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { format } from 'date-fns';
-import toast from 'react-hot-toast';
-
-const sessionModes = {
-  balanced: { label: 'Balanced', hr: [112, 132], cadence: [150, 168], pace: [5.5, 6.5], steps: [120, 200] },
-  push: { label: 'Push', hr: [138, 168], cadence: [170, 188], pace: [4.2, 5.3], steps: [190, 290] },
-  recovery: { label: 'Recovery', hr: [95, 118], cadence: [138, 156], pace: [6.7, 7.8], steps: [90, 150] },
-};
-
-const rand = (min, max) => Math.random() * (max - min) + min;
 
 const MetricCard = ({ icon, label, value, unit, status }) => (
   <div className={`metric-card status-${status || 'normal'}`}>
@@ -53,8 +44,6 @@ const Dashboard = () => {
   const [fitnessSummary, setFitnessSummary] = useState(null);
   const [billingSummary, setBillingSummary] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [sessionMode, setSessionMode] = useState('balanced');
-  const [liveSessionEnabled, setLiveSessionEnabled] = useState(false);
 
   const loadFitnessSummary = useCallback(async () => {
     try {
@@ -106,50 +95,14 @@ const Dashboard = () => {
     }
   }, [socketReading, loadFitnessSummary]);
 
-  const pushLiveReading = useCallback(async () => {
-    const mode = sessionModes[sessionMode];
-    const payload = {
-      heartRate: { value: Math.round(rand(mode.hr[0], mode.hr[1])) },
-      bloodPressure: {
-        systolic: Math.round(rand(112, 146)),
-        diastolic: Math.round(rand(72, 96)),
-      },
-      spo2: { value: Math.round(rand(94, 99)) },
-      temperature: { value: Number(rand(36.1, 37.8).toFixed(1)) },
-      steps: { value: Math.round(rand(mode.steps[0], mode.steps[1])) },
-      calories: { value: Math.round(rand(14, 40)) },
-      distance: { value: Number(rand(0.15, 0.45).toFixed(2)) },
-      cadence: { value: Math.round(rand(mode.cadence[0], mode.cadence[1])) },
-      activeMinutes: { value: 1 },
-      hydration: { value: Math.round(rand(55, 95)) },
-      sleepScore: { value: Math.round(rand(58, 92)) },
-      workoutMode: sessionMode,
-      notes: `Live ${mode.label} tracker event`,
-    };
-
-    try {
-      const { data } = await submitReading(payload);
-      setLatest(data.reading);
-      await loadFitnessSummary();
-    } catch (err) {
-      setLiveSessionEnabled(false);
-      toast.error('Live session stopped: unable to save reading.');
-    }
-  }, [loadFitnessSummary, sessionMode]);
-
-  useEffect(() => {
-    if (!liveSessionEnabled) return undefined;
-    const id = setInterval(() => {
-      pushLiveReading();
-    }, 6000);
-    return () => clearInterval(id);
-  }, [liveSessionEnabled, pushLiveReading]);
-
   const hr = latest && latest.heartRate;
   const bp = latest && latest.bloodPressure;
   const spo2 = latest && latest.spo2;
   const temp = latest && latest.temperature;
   const steps = latest && latest.steps;
+  const sleep = latest && latest.sleepScore;
+  const sleepHours = latest && latest.sleepHours;
+  const stress = latest && latest.stressLevel;
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
 
@@ -165,40 +118,20 @@ const Dashboard = () => {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span className="live-badge"><span className="live-dot" /> Live</span>
-            <Link to="/log" className="btn btn-primary btn-sm" style={{ width: 'auto' }}>+ Log Reading</Link>
           </div>
         </div>
       </div>
 
       <div className="page-content">
         <div className="card" style={{ marginBottom: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
             <div>
               <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>Real-Time Fitness Session</div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem' }}>{liveSessionEnabled ? 'Session Active' : 'Session Stopped'}</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem' }}>Auto Tracker Stream Active</div>
+              <div style={{ marginTop: 6, color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
+                Entries sync automatically every few seconds while you are logged in.
+              </div>
             </div>
-            <button
-              type="button"
-              className={`btn ${liveSessionEnabled ? 'btn-secondary' : 'btn-primary'} btn-sm`}
-              onClick={() => setLiveSessionEnabled((prev) => !prev)}
-              style={{ width: 'auto' }}
-            >
-              {liveSessionEnabled ? 'Stop Live Session' : 'Start Live Session'}
-            </button>
-          </div>
-
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
-            {Object.entries(sessionModes).map(([key, mode]) => (
-              <button
-                key={key}
-                type="button"
-                className={`btn btn-sm ${sessionMode === key ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => setSessionMode(key)}
-                style={{ width: 'auto' }}
-              >
-                {mode.label}
-              </button>
-            ))}
           </div>
 
           <div className="stats-grid" style={{ marginBottom: 0 }}>
@@ -271,6 +204,9 @@ const Dashboard = () => {
             <MetricCard icon="🫁" label="SpO₂" value={spo2 && spo2.value} unit="%" status={spo2 && spo2.status} />
             <MetricCard icon="🌡️" label="Temperature" value={temp && temp.value} unit="°C" status={temp && temp.status} />
             <MetricCard icon="👣" label="Steps" value={steps && steps.value && steps.value.toLocaleString()} unit="steps" status="normal" />
+            <MetricCard icon="😴" label="Sleep Score" value={sleep && sleep.value} unit="%" status={sleep && sleep.status} />
+            <MetricCard icon="🛌" label="Sleep Duration" value={sleepHours && sleepHours.value} unit="hrs" status="normal" />
+            <MetricCard icon="🧠" label="Stress Level" value={stress && stress.value} unit="%" status={stress && stress.status} />
             <div className="metric-card">
               <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: 8 }}>Last Updated</div>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', fontWeight: 600 }}>{format(new Date(latest.recordedAt), 'HH:mm')}</div>
@@ -282,9 +218,8 @@ const Dashboard = () => {
           <div className="card" style={{ marginBottom: 24 }}>
             <div className="empty-state">
               <div className="empty-state-icon">📋</div>
-              <h3>No readings yet</h3>
-              <p style={{ marginBottom: 16, fontSize: '0.85rem' }}>Start by logging your first health reading</p>
-              <Link to="/log" className="btn btn-primary" style={{ width: 'auto', display: 'inline-block', padding: '12px 24px' }}>Log First Reading</Link>
+              <h3>Starting tracker stream...</h3>
+              <p style={{ marginBottom: 16, fontSize: '0.85rem' }}>Your first automatic reading will appear shortly.</p>
             </div>
           </div>
         )}

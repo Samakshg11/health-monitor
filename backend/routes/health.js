@@ -56,6 +56,13 @@ const generateAlerts = async (reading, userId, io) => {
       label: 'Sleep Score',
       unit: '%',
     },
+    {
+      key: 'stressLevel',
+      value: reading.stressLevel?.value,
+      status: reading.stressLevel?.status,
+      label: 'Stress Level',
+      unit: '%',
+    },
   ];
 
   for (const check of checks) {
@@ -84,6 +91,10 @@ const generateAlerts = async (reading, userId, io) => {
         sleepScore: {
           warning: `Sleep score ${check.value}% indicates reduced recovery`,
           critical: `CRITICAL: Sleep score ${check.value}% indicates severe recovery debt`,
+        },
+        stressLevel: {
+          warning: `Stress level ${check.value}% is elevated and should be monitored`,
+          critical: `CRITICAL: Stress level ${check.value}% is high and needs immediate intervention`,
         },
       };
 
@@ -144,6 +155,8 @@ router.post('/reading', protect, async (req, res) => {
       activeMinutes,
       hydration,
       sleepScore,
+      sleepHours,
+      stressLevel,
       workoutMode,
       notes,
     } = req.body;
@@ -161,6 +174,8 @@ router.post('/reading', protect, async (req, res) => {
       activeMinutes,
       hydration,
       sleepScore,
+      sleepHours,
+      stressLevel,
       workoutMode,
       notes,
     });
@@ -357,6 +372,8 @@ router.get('/fitness/today', protect, async (req, res) => {
         ? {
             hydration: latest.hydration?.value ?? null,
             sleepScore: latest.sleepScore?.value ?? null,
+            sleepHours: latest.sleepHours?.value ?? null,
+            stressLevel: latest.stressLevel?.value ?? null,
             workoutMode: latest.workoutMode || 'balanced',
             heartRate: latest.heartRate?.value ?? null,
             updatedAt: latest.recordedAt,
@@ -425,7 +442,7 @@ router.get('/insights', protect, async (req, res) => {
           status: 'insufficient-data',
           riskLevel: 'unknown',
           summary: `No readings available in the last ${days} days.`,
-          recommendations: ['Log at least one reading daily for 7 days to unlock insights.'],
+          recommendations: ['Keep the tracker stream running for at least 7 days to unlock stable insights.'],
           metrics: null,
         },
       });
@@ -437,6 +454,8 @@ router.get('/insights', protect, async (req, res) => {
       steps: readings.map((r) => r.steps?.value || 0),
       hydration: readings.map((r) => r.hydration?.value).filter((v) => typeof v === 'number'),
       sleep: readings.map((r) => r.sleepScore?.value).filter((v) => typeof v === 'number'),
+      sleepHours: readings.map((r) => r.sleepHours?.value).filter((v) => typeof v === 'number'),
+      stress: readings.map((r) => r.stressLevel?.value).filter((v) => typeof v === 'number'),
     };
 
     const avg = (arr) =>
@@ -448,32 +467,39 @@ router.get('/insights', protect, async (req, res) => {
       spo2: readings.filter((r) => r.spo2?.status && r.spo2.status !== 'normal').length,
       hydration: readings.filter((r) => r.hydration?.status && r.hydration.status !== 'normal').length,
       sleep: readings.filter((r) => r.sleepScore?.status && r.sleepScore.status !== 'normal').length,
+      stress: readings.filter((r) => r.stressLevel?.status && r.stressLevel.status !== 'normal').length,
     };
 
     const consistency = Math.min(100, Math.round((readings.length / days) * 100));
     const avgSteps = avg(values.steps) || 0;
     const avgHydration = avg(values.hydration) || 0;
     const avgSleep = avg(values.sleep) || 0;
+    const avgSleepHours = avg(values.sleepHours) || 0;
+    const avgStress = avg(values.stress) || 0;
     const avgHr = avg(values.heartRate) || 0;
     const avgSpo2 = avg(values.spo2) || 0;
 
     let score = 100;
-    score -= (abnormalities.hr + abnormalities.spo2 + abnormalities.hydration + abnormalities.sleep) * 4;
+    score -= (abnormalities.hr + abnormalities.spo2 + abnormalities.hydration + abnormalities.sleep + abnormalities.stress) * 4;
     score -= consistency < 65 ? 12 : 0;
     score -= avgSteps < 4000 ? 10 : avgSteps < 7000 ? 5 : 0;
     score -= avgHydration < 60 ? 8 : avgHydration < 70 ? 4 : 0;
     score -= avgSleep < 65 ? 8 : avgSleep < 75 ? 4 : 0;
+    score -= avgSleepHours && avgSleepHours < 6 ? 8 : avgSleepHours < 7 ? 3 : 0;
+    score -= avgStress > 70 ? 9 : avgStress > 55 ? 4 : 0;
     score = Math.max(12, Math.min(100, Math.round(score)));
 
     const riskLevel = score >= 80 ? 'low' : score >= 60 ? 'moderate' : 'high';
     const recommendations = [];
 
-    if (consistency < 65) recommendations.push('Increase logging frequency to improve trend reliability.');
+    if (consistency < 65) recommendations.push('Tracker consistency is low; keep the app connected to improve trend reliability.');
     if (abnormalities.hr >= 2) recommendations.push('Review heart-rate spikes and add recovery sessions this week.');
     if (avgSpo2 && avgSpo2 < 95) recommendations.push('Persistent low SpO₂ detected; seek clinical assessment if symptoms continue.');
     if (avgSteps < 7000) recommendations.push('Set a gradual activity target: +1,000 daily steps over current average.');
     if (avgHydration < 70) recommendations.push('Hydration is low; schedule timed water reminders every 2-3 hours.');
     if (avgSleep < 75) recommendations.push('Sleep recovery is below target; prioritize 7-8h sleep and consistent bed timing.');
+    if (avgSleepHours && avgSleepHours < 7) recommendations.push('Average sleep duration is low; aim for a consistent 7-8 hour sleep window.');
+    if (avgStress > 55) recommendations.push('Stress trend is elevated; include breathing sessions and lighter recovery blocks.');
     if (!recommendations.length) recommendations.push('Current trends look stable. Maintain routine and keep monitoring.');
 
     const insights = {
@@ -497,6 +523,8 @@ router.get('/insights', protect, async (req, res) => {
           steps: avgSteps || null,
           hydration: avgHydration || null,
           sleepScore: avgSleep || null,
+          sleepHours: avgSleepHours || null,
+          stressLevel: avgStress || null,
         },
         latest: {
           recordedAt: latest.recordedAt,
@@ -504,6 +532,8 @@ router.get('/insights', protect, async (req, res) => {
           spo2: latest.spo2?.value ?? null,
           hydration: latest.hydration?.value ?? null,
           sleepScore: latest.sleepScore?.value ?? null,
+          sleepHours: latest.sleepHours?.value ?? null,
+          stressLevel: latest.stressLevel?.value ?? null,
           workoutMode: latest.workoutMode || 'balanced',
         },
         abnormalities,

@@ -15,8 +15,8 @@ const PLAN_CONFIG = {
   growth: {
     id: 'growth',
     label: 'Growth',
-    monthlyPrice: 39,
-    yearlyPrice: 29,
+    monthlyPrice: 3299,
+    yearlyPrice: 2499,
     limits: {
       readingsPerMonth: 4000,
       exportsPerMonth: 40,
@@ -28,8 +28,8 @@ const PLAN_CONFIG = {
   enterprise: {
     id: 'enterprise',
     label: 'Enterprise',
-    monthlyPrice: 149,
-    yearlyPrice: 119,
+    monthlyPrice: 12499,
+    yearlyPrice: 9999,
     limits: {
       readingsPerMonth: null,
       exportsPerMonth: null,

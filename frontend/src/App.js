@@ -7,7 +7,6 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
-import LogReading from './pages/LogReading';
 import History from './pages/History';
 import Reports from './pages/Reports';
 import Alerts from './pages/Alerts';
@@ -49,7 +48,7 @@ function App() {
                 color: '#e0e0e0',
                 border: '1px solid #e63946',
                 borderRadius: '12px',
-                fontFamily: "'DM Mono', monospace",
+                fontFamily: "'JetBrains Mono', monospace",
               },
               success: { iconTheme: { primary: '#2ecc71', secondary: '#fff' } },
               error: { iconTheme: { primary: '#e63946', secondary: '#fff' } },
@@ -63,10 +62,7 @@ function App() {
               path="/dashboard"
               element={<PrivateRoute><Layout><Dashboard /></Layout></PrivateRoute>}
             />
-            <Route
-              path="/log"
-              element={<PrivateRoute><Layout><LogReading /></Layout></PrivateRoute>}
-            />
+            <Route path="/log" element={<Navigate to="/dashboard" replace />} />
             <Route
               path="/history"
               element={<PrivateRoute><Layout><History /></Layout></PrivateRoute>}

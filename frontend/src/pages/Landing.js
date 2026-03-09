@@ -83,16 +83,16 @@ const testimonials = [
 const pricingPlans = [
   {
     name: 'Starter',
-    monthly: 29,
-    annual: 24,
+    monthly: 2499,
+    annual: 1999,
     description: 'For individuals and small wellness programs.',
     features: ['Up to 100 active profiles', 'Real-time alerts', 'Weekly reports'],
     cta: 'Start Starter',
   },
   {
     name: 'Growth',
-    monthly: 99,
-    annual: 84,
+    monthly: 8499,
+    annual: 6999,
     description: 'For scaling clinics and remote patient teams.',
     features: ['Up to 1,000 active profiles', 'Priority alert routing', 'Advanced analytics'],
     cta: 'Choose Growth',
@@ -100,12 +100,57 @@ const pricingPlans = [
   },
   {
     name: 'Enterprise',
-    monthly: 249,
-    annual: 219,
+    monthly: 20999,
+    annual: 17999,
     description: 'For multi-site operations with strict governance.',
     features: ['Unlimited profiles', 'Custom integrations', 'Dedicated support'],
     cta: 'Talk to Sales',
   },
+];
+
+const useCases = [
+  {
+    icon: '🏥',
+    title: 'Clinic Monitoring Desk',
+    detail: 'Centralize daily vitals from OPD follow-ups and remote patients in one triage queue.',
+    metric: '34% faster response',
+  },
+  {
+    icon: '🫀',
+    title: 'Chronic Care Programs',
+    detail: 'Track long-term trends for blood pressure, SpO2, heart rate, and medication adherence.',
+    metric: '28% fewer missed escalations',
+  },
+  {
+    icon: '🩺',
+    title: 'Post-discharge Recovery',
+    detail: 'Monitor high-risk days after discharge and route alerts to care coordinators instantly.',
+    metric: '41% better follow-up coverage',
+  },
+  {
+    icon: '🏃',
+    title: 'Wellness & Fitness Cohorts',
+    detail: 'Run preventive monitoring for teams with activity, sleep, and hydration intelligence.',
+    metric: '52% higher daily engagement',
+  },
+];
+
+const integrationGroups = [
+  {
+    title: 'Data Integrations',
+    items: ['FHIR-ready APIs', 'CSV/JSON exports', 'Webhook event delivery', 'Role-based data scopes'],
+  },
+  {
+    title: 'Compliance Controls',
+    items: ['Access audit trails', 'Session/IP logging', 'Alert acknowledgment history', 'Fine-grained auth policies'],
+  },
+];
+
+const rolloutSteps = [
+  { phase: 'Week 1', title: 'Workspace Setup', note: 'Configure teams, baseline thresholds, and notification paths.' },
+  { phase: 'Week 2', title: 'Pilot Cohort', note: 'Onboard first patient/user group and validate workflow timings.' },
+  { phase: 'Week 3', title: 'Signal Tuning', note: 'Adjust thresholds using trend quality and alert relevance reports.' },
+  { phase: 'Week 4', title: 'Scale Rollout', note: 'Expand to full operations with SLA review and governance checks.' },
 ];
 
 const getRiskBand = (age, sys, hr) => {
@@ -136,6 +181,13 @@ const formatClock = () =>
     minute: '2-digit',
   });
 
+const formatINR = (amount) =>
+  new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format(amount || 0);
+
 const trackerModes = {
   balanced: { label: 'Balanced', hrCenter: 122, cadenceCenter: 158, stepRange: [22, 44], paceRange: [5.8, 6.6] },
   push: { label: 'Push', hrCenter: 148, cadenceCenter: 176, stepRange: [38, 72], paceRange: [4.3, 5.2] },
@@ -157,7 +209,7 @@ const Landing = () => {
   const [showTop, setShowTop] = useState(false);
   const [demoOpen, setDemoOpen] = useState(false);
   const [demoForm, setDemoForm] = useState({ name: '', email: '', organization: '', teamSize: '' });
-  const [roiInput, setRoiInput] = useState({ profiles: 220, events: 18, savingsPerEvent: 180 });
+  const [roiInput, setRoiInput] = useState({ profiles: 220, events: 18, savingsPerEvent: 15000 });
   const [trackerMode, setTrackerMode] = useState('balanced');
   const [trackerPaused, setTrackerPaused] = useState(false);
   const [liveMetrics, setLiveMetrics] = useState({
@@ -426,19 +478,18 @@ const Landing = () => {
         </Link>
         <nav className="landing-topbar-links">
           <a href="#real-time">Live Tracker</a>
-          <a href="#preview">Preview</a>
           <a href="#capabilities">Capabilities</a>
-          <a href="#workflow">Workflow</a>
-          <a href="#risk-snapshot">Risk Snapshot</a>
+          <a href="#use-cases">Use Cases</a>
+          <a href="#pricing">Pricing</a>
           <a href="#faq">FAQ</a>
         </nav>
         <nav className="landing-topbar-actions">
-          <button type="button" className="landing-nav-link" onClick={() => setDemoOpen(true)}>
-            Book Demo
-          </button>
           <Link to="/login" className="landing-nav-link">
             Sign In
           </Link>
+          <button type="button" className="landing-nav-link" onClick={() => setDemoOpen(true)}>
+            Book Demo
+          </button>
           <Link to="/register" className="btn btn-primary landing-nav-btn">
             Get Started
           </Link>
@@ -485,6 +536,35 @@ const Landing = () => {
             </h3>
             <p>Continuous event tracking</p>
           </div>
+        </div>
+
+        <div className="landing-hero-visual">
+          <article className="landing-hero-panel primary">
+            <div className="landing-hero-panel-head">
+              <p>Live Ops Health</p>
+              <span>{trackerPaused ? 'Standby' : 'Active'}</span>
+            </div>
+            <h3>{liveMetrics.heartRate} bpm</h3>
+            <small>Current cardiac stream with adaptive thresholding</small>
+          </article>
+          <article className="landing-hero-panel">
+            <p>Readiness</p>
+            <h4>{trackerReadiness}%</h4>
+            <small>Sleep + hydration + cadence blend</small>
+          </article>
+          <article className="landing-hero-panel">
+            <p>Goal Completion</p>
+            <h4>{goalCompletion}%</h4>
+            <small>Daily movement target progress</small>
+          </article>
+          <article className="landing-hero-panel trend">
+            <p>Pulse Trend</p>
+            <div className="landing-hero-trend">
+              {heartTrend.slice(-10).map((point, idx) => (
+                <span key={`hero-${point}-${idx}`} style={{ height: `${clamp(((point - 80) / 100) * 100, 25, 100)}%` }} />
+              ))}
+            </div>
+          </article>
         </div>
       </section>
 
@@ -676,6 +756,23 @@ const Landing = () => {
         </div>
       </section>
 
+      <section className="landing-use-cases landing-section" id="use-cases">
+        <div className="landing-section-head">
+          <span>Where It Fits</span>
+          <h2>Deployment patterns for clinics, programs, and distributed care teams</h2>
+        </div>
+        <div className="landing-use-grid">
+          {useCases.map((item) => (
+            <article key={item.title} className="landing-use-card">
+              <div className="landing-use-icon">{item.icon}</div>
+              <h3>{item.title}</h3>
+              <p>{item.detail}</p>
+              <small>{item.metric}</small>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <section className="landing-workflow landing-section" id="workflow">
         <div className="landing-section-head">
           <span>Operational Flow</span>
@@ -697,6 +794,41 @@ const Landing = () => {
             <h3>Act on Signals</h3>
             <p>Surface risk and route alerts to the right person before the condition worsens.</p>
           </article>
+        </div>
+      </section>
+
+      <section className="landing-trust landing-section" id="trust">
+        <div className="landing-section-head">
+          <span>Security & Integrations</span>
+          <h2>Operational controls and integration rails for production use</h2>
+        </div>
+        <div className="landing-trust-grid">
+          {integrationGroups.map((group) => (
+            <article key={group.title} className="landing-stack-card">
+              <h3>{group.title}</h3>
+              <ul>
+                {group.items.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="landing-roadmap landing-section" id="roadmap">
+        <div className="landing-section-head">
+          <span>Implementation Roadmap</span>
+          <h2>A practical 4-week rollout plan for real operations</h2>
+        </div>
+        <div className="landing-roadmap-track">
+          {rolloutSteps.map((step) => (
+            <article key={step.phase} className="landing-roadmap-step">
+              <p>{step.phase}</p>
+              <h3>{step.title}</h3>
+              <span>{step.note}</span>
+            </article>
+          ))}
         </div>
       </section>
 
@@ -778,12 +910,12 @@ const Landing = () => {
               />
             </label>
             <label>
-              Avg savings/event ($): <strong>${roiInput.savingsPerEvent}</strong>
+              Avg savings/event (₹): <strong>{formatINR(roiInput.savingsPerEvent)}</strong>
               <input
                 type="range"
-                min="100"
-                max="600"
-                step="10"
+                min="5000"
+                max="50000"
+                step="500"
                 value={roiInput.savingsPerEvent}
                 onChange={(e) =>
                   setRoiInput((prev) => ({ ...prev, savingsPerEvent: Number(e.target.value) }))
@@ -798,11 +930,11 @@ const Landing = () => {
             </div>
             <div>
               <p>Estimated monthly savings</p>
-              <h3>${roiOutput.monthlySavings.toLocaleString()}</h3>
+              <h3>{formatINR(roiOutput.monthlySavings)}</h3>
             </div>
             <div>
               <p>Estimated annual savings</p>
-              <h3>${roiOutput.annualSavings.toLocaleString()}</h3>
+              <h3>{formatINR(roiOutput.annualSavings)}</h3>
             </div>
           </div>
         </div>
@@ -874,7 +1006,7 @@ const Landing = () => {
               <h3>{plan.name}</h3>
               <p>{plan.description}</p>
               <h4>
-                ${billing === 'monthly' ? plan.monthly : plan.annual}
+                {formatINR(billing === 'monthly' ? plan.monthly : plan.annual)}
                 <span>/mo</span>
               </h4>
               <ul>
