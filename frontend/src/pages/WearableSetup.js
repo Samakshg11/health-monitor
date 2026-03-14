@@ -10,6 +10,12 @@ const confidenceTone = (value) => {
   return { label: 'Weak', color: 'var(--accent-red)' };
 };
 
+const confidenceTierCopy = {
+  high: 'High confidence',
+  medium: 'Moderate confidence',
+  low: 'Directional confidence',
+};
+
 const deviceLens = {
   fitness: {
     title: 'Performance-first device plan',
@@ -118,6 +124,8 @@ const WearableSetup = () => {
       ? 'Phone now + wearable later'
       : 'Phone-first path';
   const strategyHeadline = wearable.paired ? 'Previewing the future hardware path' : 'Optimizing the free phone-first path';
+  const supportedMetrics = sourceDetails?.supportedMetrics || {};
+  const confidenceTier = sourceDetails?.confidenceTier || (latest?.confidence?.overall >= 78 ? 'high' : latest?.confidence?.overall >= 56 ? 'medium' : 'low');
 
   return (
     <div>
@@ -195,6 +203,7 @@ const WearableSetup = () => {
               <div className="tracker-hero-badges">
                 <span className="tracker-pill"><TrackerIcon name="sync" size={14} /> {wearable.paired ? 'Preview flow paired' : 'Awaiting preview pair'}</span>
                 <span className="tracker-pill"><TrackerIcon name="signal" size={14} /> <SignalBars strength={signalStrength} /></span>
+                <span className="tracker-pill"><TrackerIcon name="device" size={14} /> {confidenceTierCopy[confidenceTier] || 'Moderate confidence'}</span>
               </div>
             </div>
 
@@ -292,6 +301,22 @@ const WearableSetup = () => {
                   <div className="tracker-diagnostic-row">
                     <span>Recovery path</span>
                     <strong>{sourceDetails?.recoverySource || 'Unknown'}</strong>
+                  </div>
+                  <div className="tracker-diagnostic-row">
+                    <span>Confidence tier</span>
+                    <strong>{confidenceTierCopy[confidenceTier] || 'Moderate confidence'}</strong>
+                  </div>
+                  <div className="tracker-diagnostic-row">
+                    <span>Movement support</span>
+                    <strong>{supportedMetrics.movement || 'Unknown'}</strong>
+                  </div>
+                  <div className="tracker-diagnostic-row">
+                    <span>Vitals support</span>
+                    <strong>{supportedMetrics.vitals || 'Unknown'}</strong>
+                  </div>
+                  <div className="tracker-diagnostic-row">
+                    <span>Recovery support</span>
+                    <strong>{supportedMetrics.recovery || 'Unknown'}</strong>
                   </div>
                   <div className="tracker-diagnostic-row">
                     <span>Contributors</span>

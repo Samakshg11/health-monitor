@@ -158,6 +158,12 @@ const experienceCopy = {
   advanced: 'Use the full mix of readiness, stress, and session quality signals.',
 };
 
+const confidenceTierCopy = {
+  high: 'High confidence',
+  medium: 'Moderate confidence',
+  low: 'Directional confidence',
+};
+
 const Dashboard = () => {
   const { user } = useAuth();
   const { latestReading: socketReading, liveAlerts } = useSocket();
@@ -285,6 +291,13 @@ const Dashboard = () => {
     : `${sourceDetails?.movementSource || 'Phone motion and GPS'} power movement, while vitals are estimated from activity and recent patterns.`;
   const selectedGoal = goalCopy[onboarding.trackingGoal] || goalCopy.fitness;
   const selectedExperience = experienceCopy[onboarding.experienceLevel] || experienceCopy.beginner;
+  const confidenceTier = sourceDetails?.confidenceTier || (latest?.confidence?.overall >= 78 ? 'high' : latest?.confidence?.overall >= 56 ? 'medium' : 'low');
+  const supportedMetrics = sourceDetails?.supportedMetrics || {};
+  const sourceStrengthSummary = [
+    `Movement ${supportedMetrics.movement || 'stronger'}`,
+    `Vitals ${supportedMetrics.vitals || 'estimated'}`,
+    `Recovery ${supportedMetrics.recovery || 'trend-based'}`,
+  ];
 
   return (
     <div>
@@ -326,6 +339,7 @@ const Dashboard = () => {
               </p>
               <div className="tracker-hero-badges">
                 <span className="tracker-pill"><TrackerIcon name="device" size={14} /> {sourceHeadline}</span>
+                <span className="tracker-pill"><TrackerIcon name="signal" size={14} /> {confidenceTierCopy[confidenceTier] || 'Moderate confidence'}</span>
                 <span className="tracker-pill"><TrackerIcon name="heart" size={14} /> {latest?.heartRate?.value ?? '—'} BPM</span>
                 <span className="tracker-pill"><TrackerIcon name="oxygen" size={14} /> {latest?.spo2?.value ?? '—'}% SpO2</span>
                 <span className="tracker-pill"><TrackerIcon name="temperature" size={14} /> {latest?.temperature?.value ?? '—'}°C</span>
@@ -375,6 +389,11 @@ const Dashboard = () => {
                 <span key={item}>{item.replace(/-/g, ' ')}</span>
               ))}
             </div>
+            <div className="tracker-flow-steps" style={{ marginTop: 12 }}>
+              {sourceStrengthSummary.map((item) => (
+                <span key={item}>{item}</span>
+              ))}
+            </div>
           </div>
 
           <div className="card tracker-trend-card">
@@ -383,19 +402,20 @@ const Dashboard = () => {
                 <span className="eyebrow">Confidence</span>
                 <h3>{latest?.confidence?.overall ?? '—'}% overall</h3>
               </div>
+              <span className="tracker-pill">{confidenceTierCopy[confidenceTier] || 'Moderate confidence'}</span>
             </div>
             <div className="tracker-summary-rows">
               <div className="tracker-summary-row">
                 <span><TrackerIcon name="activity" size={16} /> Movement</span>
-                <strong>{latest?.confidence?.steps ?? '—'}%</strong>
+                <strong>{latest?.confidence?.steps ?? '—'}% · {supportedMetrics.movement || 'stronger'}</strong>
               </div>
               <div className="tracker-summary-row">
                 <span><TrackerIcon name="heart" size={16} /> Vitals</span>
-                <strong>{latest?.confidence?.heartRate ?? '—'}%</strong>
+                <strong>{latest?.confidence?.heartRate ?? '—'}% · {supportedMetrics.vitals || 'estimated'}</strong>
               </div>
               <div className="tracker-summary-row">
                 <span><TrackerIcon name="sleep" size={16} /> Recovery</span>
-                <strong>{latest?.confidence?.sleepScore ?? '—'}%</strong>
+                <strong>{latest?.confidence?.sleepScore ?? '—'}% · {supportedMetrics.recovery || 'trend-based'}</strong>
               </div>
             </div>
           </div>
