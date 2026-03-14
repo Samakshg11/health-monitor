@@ -444,6 +444,19 @@ const Dashboard = () => {
           </div>
         </section>
 
+        {sourceMode === 'health_connect' && (
+          <section className="card tracker-onboarding-banner">
+            <div>
+              <span className="eyebrow">Connected source</span>
+              <h3>Health Connect is driving the latest reading</h3>
+              <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7 }}>
+                The current snapshot came through the free Android adapter path, so movement and supported vitals are being treated as connected-source data instead of phone-only estimation.
+              </p>
+            </div>
+            <Link to="/wearable" className="btn btn-secondary btn-sm" style={{ width: 'auto' }}>Review source path</Link>
+          </section>
+        )}
+
         <section className="tracker-snapshot-grid">
           <div className="card tracker-trend-card">
             <div className="panel-heading">

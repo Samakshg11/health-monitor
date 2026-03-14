@@ -192,6 +192,8 @@ const WearableSetup = () => {
   const strategyHeadline = wearable.paired ? 'Previewing the future hardware path' : 'Optimizing the free phone-first path';
   const supportedMetrics = sourceDetails?.supportedMetrics || {};
   const confidenceTier = sourceDetails?.confidenceTier || (latest?.confidence?.overall >= 78 ? 'high' : latest?.confidence?.overall >= 56 ? 'medium' : 'low');
+  const mockHealthConnectPayload = useMemo(() => buildMockHealthConnectPayload(), []);
+  const latestHealthConnectImport = latest?.source === 'health_connect' ? latest : null;
 
   return (
     <div>
@@ -371,6 +373,44 @@ const WearableSetup = () => {
               </div>
             </div>
           </div>
+
+            <div className="card">
+              <div className="panel-heading">
+                <div>
+                  <span className="eyebrow">Demo bridge</span>
+                  <h3>Health Connect mock importer</h3>
+                </div>
+              </div>
+              <div className="tracker-diagnostics-list">
+                <div className="tracker-diagnostic-row">
+                  <span>Status</span>
+                  <strong>{latestHealthConnectImport ? 'Latest reading came from Health Connect' : 'Ready to import sample'}</strong>
+                </div>
+                <div className="tracker-diagnostic-row">
+                  <span>Last import</span>
+                  <strong>{latestHealthConnectImport?.recordedAt ? new Date(latestHealthConnectImport.recordedAt).toLocaleString() : 'No Health Connect sample yet'}</strong>
+                </div>
+                <div className="tracker-diagnostic-row">
+                  <span>Bridge source</span>
+                  <strong>{mockHealthConnectPayload.primarySource}</strong>
+                </div>
+                <div className="tracker-diagnostic-row">
+                  <span>Sample movement</span>
+                  <strong>{mockHealthConnectPayload.metrics.steps.toLocaleString()} steps · {mockHealthConnectPayload.metrics.distance} km</strong>
+                </div>
+                <div className="tracker-diagnostic-row">
+                  <span>Sample vitals</span>
+                  <strong>{mockHealthConnectPayload.metrics.heartRate} BPM · {mockHealthConnectPayload.metrics.spo2}% SpO₂</strong>
+                </div>
+                <div className="tracker-diagnostic-row">
+                  <span>Sample recovery</span>
+                  <strong>{mockHealthConnectPayload.metrics.sleepHours} hrs · {mockHealthConnectPayload.metrics.sleepScore}% sleep score</strong>
+                </div>
+              </div>
+              <p style={{ color: 'var(--text-secondary)', marginTop: 14, lineHeight: 1.7 }}>
+                This stays free: the button above sends a sample connected-source payload through your backend `Health Connect` adapter route, so you can demo an Android integration path without any paid aggregator.
+              </p>
+            </div>
 
             <div className="card">
               <div className="panel-heading">
