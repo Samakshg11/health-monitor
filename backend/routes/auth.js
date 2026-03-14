@@ -127,6 +127,9 @@ router.put('/profile', protect, async (req, res) => {
     );
     res.json({ success: true, user: serializeUser(user) });
   } catch (err) {
+    if (err.name === 'ValidationError' || err.name === 'CastError') {
+      return res.status(400).json({ success: false, message: err.message });
+    }
     res.status(500).json({ success: false, message: err.message });
   }
 });

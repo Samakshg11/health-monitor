@@ -25,6 +25,7 @@ const getLocalDayKey = (date = new Date()) => (
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 );
 const getTrackingStorageKey = (userId) => `vw_tracking_enabled_${userId}`;
+const hasValue = (value) => value !== undefined && value !== null && value !== '';
 
 const goalProfiles = {
   fitness: {
@@ -672,18 +673,28 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updateProfile = async (profileData) => {
+    const organizationName = profileData.organizationName || '';
+    const organizationRole = profileData.organizationRole || '';
     const payload = {
-      ...profileData,
-      organization: {
-        name: profileData.organizationName || '',
-        role: profileData.organizationRole || '',
-      },
+      name: profileData.name?.trim(),
       onboarding: {
         ...defaultOnboarding,
         ...(user?.onboarding || {}),
         ...(profileData.onboarding || {}),
       },
     };
+
+    if (hasValue(profileData.age)) payload.age = Number(profileData.age);
+    if (hasValue(profileData.gender)) payload.gender = profileData.gender;
+    if (hasValue(profileData.weight)) payload.weight = Number(profileData.weight);
+    if (hasValue(profileData.height)) payload.height = Number(profileData.height);
+    if (organizationName || organizationRole) {
+      payload.organization = {
+        name: organizationName,
+        role: organizationRole,
+      };
+    }
+
     const { data } = await API.put('/auth/profile', payload);
     setUser(data.user);
     return data;
