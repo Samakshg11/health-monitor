@@ -2644,6 +2644,206 @@ body {
   gap: 22px;
 }
 
+.checkin-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) 260px;
+  gap: 18px;
+  background:
+    radial-gradient(circle at top left, rgba(230, 57, 70, 0.12), transparent 28%),
+    linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015));
+}
+
+.checkin-hero h2 {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  margin-top: 8px;
+  margin-bottom: 10px;
+}
+
+.checkin-hero p {
+  color: var(--text-secondary);
+  line-height: 1.75;
+  max-width: 62ch;
+}
+
+.checkin-mode-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.checkin-mode-btn {
+  text-align: left;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 16px;
+  padding: 14px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.2s, background 0.2s;
+}
+
+.checkin-mode-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(230, 57, 70, 0.25);
+}
+
+.checkin-mode-btn.active {
+  background: rgba(230, 57, 70, 0.1);
+  border-color: rgba(230, 57, 70, 0.38);
+}
+
+.checkin-mode-btn strong {
+  display: block;
+  font-family: var(--font-display);
+  margin-bottom: 6px;
+}
+
+.checkin-mode-btn span {
+  display: block;
+  color: var(--text-secondary);
+  line-height: 1.55;
+  font-size: 0.82rem;
+}
+
+.checkin-hero-side {
+  display: grid;
+  gap: 12px;
+}
+
+.checkin-score-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.checkin-score-card strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  margin-top: 10px;
+}
+
+.checkin-score-card small {
+  display: block;
+  margin-top: 8px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.checkin-score-card-accent {
+  border-color: rgba(78, 205, 196, 0.2);
+  background: rgba(78, 205, 196, 0.08);
+}
+
+.checkin-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) 320px;
+  gap: 18px;
+  align-items: start;
+}
+
+.checkin-main-card {
+  max-width: none;
+}
+
+.checkin-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.checkin-toolbar h3 {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  margin-top: 6px;
+}
+
+.checkin-section {
+  margin-bottom: 24px;
+}
+
+.checkin-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.checkin-field-card {
+  padding: 16px;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 16px;
+  background: rgba(255,255,255,0.02);
+}
+
+.checkin-field-head {
+  display: grid;
+  gap: 10px;
+}
+
+.checkin-preset-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.checkin-preset-chip {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  color: var(--text-secondary);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.checkin-preset-chip:hover,
+.checkin-preset-chip.active {
+  border-color: rgba(230, 57, 70, 0.32);
+  color: var(--text-primary);
+  background: rgba(230, 57, 70, 0.08);
+}
+
+.checkin-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.checkin-sidebar {
+  display: grid;
+  gap: 14px;
+}
+
+.checkin-side-card h3 {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  margin: 8px 0;
+}
+
+.checkin-side-card p {
+  color: var(--text-secondary);
+  line-height: 1.75;
+  font-size: 0.84rem;
+}
+
+.checkin-source-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-primary);
+  border-radius: 999px;
+  padding: 8px 12px;
+  margin: 12px 0;
+}
+
 .reports-hero-main {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) 280px;
@@ -3531,8 +3731,12 @@ body {
   .landing-to-top { right: 14px; bottom: 14px; }
   .landing-final-cta { padding: 30px 16px; }
   .tracker-header { flex-direction: column; }
+  .checkin-hero,
+  .checkin-layout,
   .reports-hero-main,
   .reports-chart-grid { grid-template-columns: 1fr; }
+  .checkin-mode-row,
+  .checkin-field-grid { grid-template-columns: 1fr; }
   .reports-source-grid { grid-template-columns: 1fr; }
   .tracker-hero-main,
   .tracker-device-hero { grid-template-columns: 1fr; }
@@ -3542,6 +3746,7 @@ body {
   .tracker-history-overview { grid-template-columns: 1fr; }
   .tracker-session-main,
   .tracker-session-footer { align-items: flex-start; }
+  .checkin-actions { flex-direction: column; }
   .tracker-compare-row { grid-template-columns: 1fr; }
   .page-header { padding: 24px 20px 0; }
   .page-content { padding: 0 20px 24px; }
