@@ -22,8 +22,9 @@ const Layout = ({ children }) => {
   }, [liveAlerts]);
 
   const handleLogout = () => {
+    if (!window.confirm('Log out and return to the landing page?')) return;
     logout();
-    navigate('/login');
+    navigate('/');
   };
 
   const navItems = [
