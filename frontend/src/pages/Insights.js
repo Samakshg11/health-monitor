@@ -9,8 +9,27 @@ const statusColor = {
   'insufficient-data': '#8888aa',
 };
 
+const goalLens = {
+  fitness: {
+    title: 'Fitness lens',
+    detail: 'Insights should prioritize movement consistency, active minutes, and readiness trends.',
+  },
+  wellness: {
+    title: 'Wellness lens',
+    detail: 'Insights should favor steady habits, balanced stress, and sustainable daily patterns.',
+  },
+  recovery: {
+    title: 'Recovery lens',
+    detail: 'Insights should lean toward sleep, stress load, and signs of overreaching.',
+  },
+  'clinical-awareness': {
+    title: 'Awareness lens',
+    detail: 'Insights should put more weight on signal quality and unusual changes over raw output.',
+  },
+};
+
 const Insights = () => {
-  const { wearable } = useAuth();
+  const { wearable, user } = useAuth();
   const [days, setDays] = useState(14);
   const [loading, setLoading] = useState(true);
   const [insights, setInsights] = useState(null);
@@ -34,6 +53,22 @@ const Insights = () => {
   if (!insights) return <div style={{ padding: 24, color: 'var(--text-secondary)' }}>Unable to load insights.</div>;
 
   const averages = insights.metrics?.averages || {};
+  const onboarding = user?.onboarding || {};
+  const lens = goalLens[onboarding.trackingGoal] || goalLens.fitness;
+  const personalizedRecommendations = [
+    onboarding.trackingGoal === 'recovery'
+      ? 'Keep an eye on sleep score and stress before increasing training load.'
+      : onboarding.trackingGoal === 'clinical-awareness'
+        ? 'Treat weak-confidence phone-only vitals as directional until you have stronger source data.'
+        : onboarding.trackingGoal === 'wellness'
+          ? 'Aim for repeatable habits more than perfect single-day scores.'
+          : 'Use movement and active-minute consistency as your main success signal.',
+    onboarding.preferredTrackingMode === 'future_band'
+      ? 'Your setup is already tuned for a future wearable path, so watch how confidence would improve with direct sensor input.'
+      : onboarding.preferredTrackingMode === 'both'
+        ? 'Balance what phone-first tracking can do today with the future wearable roadmap you selected.'
+        : 'Phone-first mode works best when you focus on trends, not isolated exact readings.',
+  ];
 
   return (
     <div>
@@ -54,6 +89,25 @@ const Insights = () => {
       </div>
 
       <div className="page-content">
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.08em', marginBottom: 8 }}>Your setup lens</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.35rem' }}>{lens.title}</div>
+              <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7, marginTop: 8 }}>{lens.detail}</p>
+            </div>
+            <div style={{ minWidth: 220 }}>
+              <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.08em', marginBottom: 8 }}>Tracking mode</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem', textTransform: 'capitalize' }}>
+                {onboarding.preferredTrackingMode === 'future_band' ? 'Future wearable' : onboarding.preferredTrackingMode === 'both' ? 'Both paths' : 'Phone only'}
+              </div>
+              <div style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', marginTop: 6 }}>
+                {onboarding.experienceLevel || 'beginner'} level
+              </div>
+            </div>
+          </div>
+        </div>
+
         {!wearable.paired && (
           <div className="card" style={{ marginBottom: 20 }}>
             <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.08em', marginBottom: 8 }}>Source note</div>
@@ -114,6 +168,9 @@ const Insights = () => {
         <div className="card">
           <h3 style={{ marginBottom: 14 }}>Recommended Next Actions</h3>
           <ul style={{ marginLeft: 18, color: 'var(--text-secondary)', display: 'grid', gap: 8 }}>
+            {personalizedRecommendations.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
             {(insights.recommendations || []).map((item) => (
               <li key={item}>{item}</li>
             ))}

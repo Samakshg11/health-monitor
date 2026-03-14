@@ -133,6 +133,31 @@ const getMetricPresentation = ({ metricKey, metric, fallbackUnit, sourceMode, so
     : { value: metric?.value ?? '—', unit: fallbackUnit, trend: metric?.trend };
 };
 
+const goalCopy = {
+  fitness: {
+    headline: 'Build consistent activity',
+    detail: 'Movement, active minutes, and session readiness should lead your day.',
+  },
+  wellness: {
+    headline: 'Keep daily habits steady',
+    detail: 'Use this view to stay consistent with sleep, hydration, and balanced effort.',
+  },
+  recovery: {
+    headline: 'Protect recovery quality',
+    detail: 'Sleep, stress, and readiness deserve more attention than hard-output chasing.',
+  },
+  'clinical-awareness': {
+    headline: 'Track changes carefully',
+    detail: 'Use trends and source confidence to notice changes early without overreacting to weak signals.',
+  },
+};
+
+const experienceCopy = {
+  beginner: 'Keep the dashboard simple and directional.',
+  regular: 'Focus on consistency and week-over-week movement.',
+  advanced: 'Use the full mix of readiness, stress, and session quality signals.',
+};
+
 const Dashboard = () => {
   const { user } = useAuth();
   const { latestReading: socketReading, liveAlerts } = useSocket();
@@ -201,6 +226,7 @@ const Dashboard = () => {
   }
 
   const firstName = user?.name?.split(' ')[0] || 'there';
+  const onboarding = user?.onboarding || {};
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Morning' : hour < 17 ? 'Afternoon' : 'Evening';
   const totals = fitnessSummary?.totals;
@@ -257,6 +283,8 @@ const Dashboard = () => {
   const sourceSummary = sourceMode === 'band_plus_phone'
     ? `${sourceDetails?.primarySource || 'Band-preview sensors'} feed vitals, while ${sourceDetails?.movementSource || 'phone GPS'} helps refine activity.`
     : `${sourceDetails?.movementSource || 'Phone motion and GPS'} power movement, while vitals are estimated from activity and recent patterns.`;
+  const selectedGoal = goalCopy[onboarding.trackingGoal] || goalCopy.fitness;
+  const selectedExperience = experienceCopy[onboarding.experienceLevel] || experienceCopy.beginner;
 
   return (
     <div>
@@ -264,7 +292,7 @@ const Dashboard = () => {
         <div>
           <span className="eyebrow">Daily summary</span>
           <h1>{greeting}, {firstName}</h1>
-          <p>{format(new Date(), 'EEEE, MMMM d')} · Your current session, activity estimates, and future wearable-ready flow in one place.</p>
+          <p>{format(new Date(), 'EEEE, MMMM d')} · {selectedGoal.headline}. {selectedExperience}</p>
         </div>
         <div className="tracker-header-actions">
           <span className="live-badge"><span className="live-dot" /> Syncing live</span>
@@ -368,6 +396,47 @@ const Dashboard = () => {
               <div className="tracker-summary-row">
                 <span><TrackerIcon name="sleep" size={16} /> Recovery</span>
                 <strong>{latest?.confidence?.sleepScore ?? '—'}%</strong>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="tracker-snapshot-grid">
+          <div className="card tracker-trend-card">
+            <div className="panel-heading">
+              <div>
+                <span className="eyebrow">Your setup</span>
+                <h3>{selectedGoal.headline}</h3>
+              </div>
+              <Link to="/profile">Adjust</Link>
+            </div>
+            <p className="tracker-flow-summary">{selectedGoal.detail}</p>
+            <div className="tracker-flow-steps">
+              <span>{onboarding.preferredTrackingMode === 'future_band' ? 'Future wearable path' : onboarding.preferredTrackingMode === 'both' ? 'Dual path' : 'Phone first'}</span>
+              <span>{onboarding.experienceLevel || 'beginner'}</span>
+              <span>{onboarding.trackingGoal || 'fitness'}</span>
+            </div>
+          </div>
+
+          <div className="card tracker-trend-card">
+            <div className="panel-heading">
+              <div>
+                <span className="eyebrow">Today&apos;s emphasis</span>
+                <h3>{onboarding.trackingGoal === 'recovery' ? 'Recover well' : onboarding.trackingGoal === 'clinical-awareness' ? 'Watch signal quality' : 'Stay consistent'}</h3>
+              </div>
+            </div>
+            <div className="tracker-summary-rows">
+              <div className="tracker-summary-row">
+                <span><TrackerIcon name="steps" size={16} /> Activity target</span>
+                <strong>{onboarding.trackingGoal === 'fitness' ? `${stepGoalProgress}%` : `${totals?.activeMinutes || 0} min`}</strong>
+              </div>
+              <div className="tracker-summary-row">
+                <span><TrackerIcon name="sleep" size={16} /> Recovery focus</span>
+                <strong>{recoveryScore}%</strong>
+              </div>
+              <div className="tracker-summary-row">
+                <span><TrackerIcon name="device" size={16} /> Source mode</span>
+                <strong>{sourceHeadline}</strong>
               </div>
             </div>
           </div>
