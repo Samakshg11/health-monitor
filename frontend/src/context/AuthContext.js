@@ -7,6 +7,7 @@ export const useAuth = () => useContext(AuthContext);
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const rand = (min, max) => Math.random() * (max - min) + min;
+const chance = (value) => Math.random() < value;
 const toRad = (deg) => (deg * Math.PI) / 180;
 const haversineKm = (a, b) => {
   if (!a || !b) return 0;
@@ -17,6 +18,49 @@ const haversineKm = (a, b) => {
   const lat2 = toRad(b.lat);
   const x = Math.sin(dLat / 2) ** 2 + Math.sin(dLon / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
   return 2 * R * Math.asin(Math.sqrt(x));
+};
+
+const round1 = (value) => Number(value.toFixed(1));
+
+const goalProfiles = {
+  fitness: {
+    modeBias: { push: 0.28, balanced: 0.57, recovery: 0.15 },
+    stressOffset: 4,
+    hydrationDrift: -1,
+    sleepOffset: -2,
+  },
+  wellness: {
+    modeBias: { push: 0.12, balanced: 0.6, recovery: 0.28 },
+    stressOffset: -1,
+    hydrationDrift: 1,
+    sleepOffset: 2,
+  },
+  recovery: {
+    modeBias: { push: 0.05, balanced: 0.35, recovery: 0.6 },
+    stressOffset: -6,
+    hydrationDrift: 2,
+    sleepOffset: 5,
+  },
+  'clinical-awareness': {
+    modeBias: { push: 0.08, balanced: 0.54, recovery: 0.38 },
+    stressOffset: -3,
+    hydrationDrift: 1,
+    sleepOffset: 1,
+  },
+};
+
+const pickWeightedMode = (bias) => {
+  const roll = Math.random();
+  if (roll < bias.push) return 'push';
+  if (roll < bias.push + bias.balanced) return 'balanced';
+  return 'recovery';
+};
+
+const defaultOnboarding = {
+  completed: false,
+  trackingGoal: 'fitness',
+  experienceLevel: 'beginner',
+  preferredTrackingMode: 'phone_only',
 };
 
 export const AuthProvider = ({ children }) => {
@@ -43,12 +87,6 @@ export const AuthProvider = ({ children }) => {
     motionSeenAt: 0,
   });
 
-  const defaultOnboarding = {
-    completed: false,
-    trackingGoal: 'fitness',
-    experienceLevel: 'beginner',
-    preferredTrackingMode: 'phone_only',
-  };
   const wearableRef = useRef({
     paired: localStorage.getItem('vw_wearable_paired') === 'true',
     battery: Number(localStorage.getItem('vw_wearable_battery') || 87),
@@ -165,7 +203,7 @@ export const AuthProvider = ({ children }) => {
     setSensorStatus((prev) => ({ ...prev, geoPermission, motionPermission }));
   };
 
-  const buildSourceDetails = ({ isPaired, sensors, overallConfidence }) => {
+  const buildSourceDetails = ({ isPaired, sensors, overallConfidence, onboarding, supportedMetrics, confidenceTier }) => {
     const contributors = [];
     if (sensors.hasMotion) contributors.push('phone-motion');
     if (sensors.hasGeo) contributors.push('phone-gps');
@@ -182,17 +220,23 @@ export const AuthProvider = ({ children }) => {
           recoverySource: 'Band-style vitals plus activity fusion',
           contributors,
           overallConfidence,
+          confidenceTier,
+          supportedMetrics,
         }
       : {
           mode: 'phone_only',
           label: 'Phone only',
           deviceName: 'Phone sensors',
           deviceBattery: null,
-          primarySource: 'Phone motion and routine model',
+          primarySource: onboarding?.trackingGoal === 'clinical-awareness'
+            ? 'Phone motion, routine model, and cautious trend scoring'
+            : 'Phone motion and routine model',
           movementSource: sensors.hasGeo || sensors.hasMotion ? 'Phone motion and GPS estimate' : 'Routine estimate fallback',
           recoverySource: 'Historical trend estimate',
           contributors: contributors.length ? contributors : ['history-model'],
           overallConfidence,
+          confidenceTier,
+          supportedMetrics,
         };
   };
 
@@ -281,8 +325,14 @@ export const AuthProvider = ({ children }) => {
     const postAutoReading = async () => {
       const now = new Date();
       const hour = now.getHours();
-      const dayMode = hour < 8 || hour > 22 ? 'recovery' : hour > 17 ? 'push' : 'balanced';
-      const mode = Math.random() > 0.82 ? 'push' : dayMode;
+      const onboarding = {
+        ...defaultOnboarding,
+        ...(user?.onboarding || {}),
+      };
+      const goalProfile = goalProfiles[onboarding.trackingGoal] || goalProfiles.fitness;
+      const baseDayMode = hour < 8 || hour > 22 ? 'recovery' : hour > 17 ? 'push' : 'balanced';
+      const weightedMode = pickWeightedMode(goalProfile.modeBias);
+      const mode = chance(0.58) ? baseDayMode : weightedMode;
       const profile = modeTemplates[mode];
       const current = trackerRef.current;
       const sensors = sensorRef.current;
@@ -292,6 +342,7 @@ export const AuthProvider = ({ children }) => {
       const motionBoost = freshMotion ? sensors.motionScore * 38 : 0;
       const geoDistance = sensors.distanceSinceLastKm;
       sensorRef.current.distanceSinceLastKm = 0;
+      const phoneOnly = !isPaired;
 
       const phoneBaseSteps = rand(profile.steps[0] * 0.72, profile.steps[1] * 0.84);
       const bandBaseSteps = rand(profile.steps[0], profile.steps[1]);
@@ -324,40 +375,100 @@ export const AuthProvider = ({ children }) => {
         100
       );
 
+      const activitySignal = clamp(
+        (freshMotion ? 1 : 0) * 36 +
+        (sensors.hasGeo ? 24 : 0) +
+        clamp(geoDistance * 400, 0, 30) +
+        clamp(stepsValue / 8, 0, 18),
+        10,
+        100
+      );
+      const activityConfidenceBase = sensors.hasGeo && sensors.hasMotion ? 82 : sensors.hasGeo || sensors.hasMotion ? 66 : 40;
+      const activityConfidence = clamp(
+        activityConfidenceBase +
+        (phoneOnly ? 0 : 12) +
+        (onboarding.experienceLevel === 'advanced' ? 2 : 0),
+        38,
+        97
+      );
+      const vitalsConfidenceBase = phoneOnly
+        ? 22 + (freshMotion ? 6 : 0) + (onboarding.trackingGoal === 'clinical-awareness' ? 6 : 0)
+        : 76 + (freshMotion ? 4 : 0) + (sensors.hasGeo ? 3 : 0);
+      const vitalsConfidence = clamp(vitalsConfidenceBase, phoneOnly ? 18 : 62, 96);
+      const sleepConfidence = clamp((phoneOnly ? 44 : 78) + (goalProfile.sleepOffset > 0 ? 3 : 0) + (freshMotion ? 2 : 0), 35, 93);
+      const stressConfidence = clamp((phoneOnly ? 38 : 74) + (goalProfile.stressOffset < 0 ? 4 : 0) + (freshMotion ? 4 : 0), 28, 92);
+
       const heartRate = clamp(
         Math.round(
           current.heartRate +
-          rand(-3, 3) +
-          (isPaired ? exertionScore * 0.34 : exertionScore * 0.22) +
-          (rand(profile.hr[0], profile.hr[1]) - current.heartRate) * (isPaired ? 0.22 : 0.12)
+          rand(phoneOnly ? -5 : -3, phoneOnly ? 5 : 3) +
+          (isPaired ? exertionScore * 0.34 : exertionScore * 0.16) +
+          (rand(profile.hr[0], profile.hr[1]) - current.heartRate) * (isPaired ? 0.22 : 0.08)
         ),
-        72,
+        68,
         176
       );
-      const systolic = clamp(Math.round(current.systolic + rand(-3, 3) + (heartRate - 112) * 0.07), 102, 154);
-      const diastolic = clamp(Math.round(current.diastolic + rand(-2, 2) + (heartRate - 112) * 0.035), 64, 100);
-      const spo2 = clamp(Math.round(current.spo2 + rand(isPaired ? -0.8 : -0.4, isPaired ? 0.8 : 0.4)), 92, 100);
-      const temperature = Number(clamp(current.temperature + rand(isPaired ? -0.12 : -0.06, isPaired ? 0.16 : 0.09), 36.0, 38.3).toFixed(1));
+      const estimatedHeartRate = clamp(
+        Math.round(62 + (activitySignal * 0.42) + rand(-7, 8) + (goalProfile.stressOffset * 0.4)),
+        60,
+        152
+      );
+      const finalHeartRate = phoneOnly && vitalsConfidence < 40 ? estimatedHeartRate : heartRate;
+      const systolic = clamp(
+        Math.round((phoneOnly ? 118 : current.systolic) + rand(-4, 4) + (finalHeartRate - 110) * (phoneOnly ? 0.04 : 0.07)),
+        100,
+        154
+      );
+      const diastolic = clamp(
+        Math.round((phoneOnly ? 78 : current.diastolic) + rand(-3, 3) + (finalHeartRate - 110) * (phoneOnly ? 0.02 : 0.035)),
+        62,
+        100
+      );
+      const spo2 = clamp(
+        Math.round((phoneOnly ? 96 : current.spo2) + rand(phoneOnly ? -1.2 : -0.8, phoneOnly ? 0.8 : 0.8)),
+        phoneOnly ? 93 : 92,
+        100
+      );
+      const temperature = round1(
+        clamp((phoneOnly ? 36.6 : current.temperature) + rand(phoneOnly ? -0.18 : -0.12, phoneOnly ? 0.18 : 0.16), 36.0, 38.3)
+      );
       const cadence = clamp(Math.round(current.cadence + rand(-5, 5) + (rand(profile.cadence[0], profile.cadence[1]) - current.cadence) * (isPaired ? 0.3 : 0.18)), 118, 192);
-      const hydration = clamp(Math.round(current.hydration - (Math.random() > 0.66 ? 1 : 0) + (Math.random() > 0.92 ? 2 : 0)), 38, 100);
-      const sleep = clamp(Math.round(current.sleep + rand(-1.4, 0.5)), 55, 97);
-      const sleepHours = Number(clamp(current.sleepHours + rand(-0.18, 0.16), 4.3, 9.1).toFixed(1));
-      const stressBias = mode === 'push' ? 10 : mode === 'balanced' ? 2 : -7;
+      const hydration = clamp(
+        Math.round(current.hydration - (Math.random() > 0.66 ? 1 : 0) + goalProfile.hydrationDrift + (Math.random() > 0.95 ? 2 : 0)),
+        38,
+        100
+      );
+      const sleep = clamp(Math.round(current.sleep + goalProfile.sleepOffset * 0.08 + rand(-1.6, 0.7)), 55, 97);
+      const sleepHours = round1(clamp(current.sleepHours + goalProfile.sleepOffset * 0.02 + rand(-0.18, 0.16), 4.3, 9.1));
+      const stressBias = (mode === 'push' ? 10 : mode === 'balanced' ? 2 : -7) + goalProfile.stressOffset;
       const stress = clamp(Math.round(current.stress + rand(-6, 5) + stressBias), 12, 92);
-
-      const activityConfidenceBase = sensors.hasGeo && sensors.hasMotion ? 80 : sensors.hasGeo || sensors.hasMotion ? 66 : 42;
-      const activityConfidence = clamp(activityConfidenceBase + (isPaired ? 12 : 0), 38, 97);
-      const vitalsConfidence = clamp((isPaired ? 78 : 32) + (sensors.hasMotion ? 8 : 0), 25, 96);
-      const sleepConfidence = clamp((isPaired ? 76 : 52) + (sensors.hasMotion ? 4 : 0), 42, 92);
-      const stressConfidence = clamp((isPaired ? 74 : 44) + (sensors.hasMotion ? 6 : 0), 35, 92);
       const overallConfidence = Math.round(
         (activityConfidence * 0.38 + vitalsConfidence * 0.36 + sleepConfidence * 0.14 + stressConfidence * 0.12)
       );
-      const sourceDetails = buildSourceDetails({ isPaired, sensors, overallConfidence });
+      const confidenceTier = overallConfidence >= 78 ? 'high' : overallConfidence >= 56 ? 'medium' : 'low';
+      const supportedMetrics = phoneOnly
+        ? {
+            movement: 'stronger',
+            vitals: vitalsConfidence >= 40 ? 'directional' : 'estimated',
+            recovery: sleepConfidence >= 55 ? 'trend-based' : 'limited',
+          }
+        : {
+            movement: 'stronger',
+            vitals: 'sensor-backed preview',
+            recovery: 'sensor fusion preview',
+          };
+      const sourceDetails = buildSourceDetails({
+        isPaired,
+        sensors,
+        overallConfidence,
+        onboarding,
+        supportedMetrics,
+        confidenceTier,
+      });
 
       trackerRef.current = {
         mode,
-        heartRate,
+        heartRate: finalHeartRate,
         systolic,
         diastolic,
         spo2,
@@ -370,12 +481,12 @@ export const AuthProvider = ({ children }) => {
       };
 
       const payload = {
-        heartRate: { value: heartRate },
+        heartRate: { value: finalHeartRate },
         bloodPressure: { systolic, diastolic },
         spo2: { value: spo2 },
         temperature: { value: temperature },
         steps: { value: stepsValue },
-        calories: { value: Math.round(rand(14, 42)) },
+        calories: { value: Math.round(clamp((stepsValue * 0.045) + (activeMinutesValue * 4) + rand(8, 18), 10, 58)) },
         distance: { value: distanceEstimate },
         cadence: { value: cadence },
         activeMinutes: { value: activeMinutesValue },
@@ -394,13 +505,13 @@ export const AuthProvider = ({ children }) => {
           steps: activityConfidence,
           distance: activityConfidence,
           activeMinutes: activityConfidence,
-          hydration: 55,
+          hydration: phoneOnly ? 52 : 68,
           sleepScore: sleepConfidence,
           sleepHours: sleepConfidence,
           stressLevel: stressConfidence,
         },
         workoutMode: mode,
-        notes: `${sourceDetails.label} flow · ${mode} · conf ${overallConfidence}%`,
+        notes: `${sourceDetails.label} flow · ${mode} · conf ${overallConfidence}% · ${confidenceTier} confidence`,
       };
 
       setVerification((prev) => ({

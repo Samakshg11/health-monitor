@@ -72,6 +72,12 @@ const healthReadingSchema = new mongoose.Schema(
       primarySource: { type: String },
       movementSource: { type: String },
       recoverySource: { type: String },
+      confidenceTier: { type: String, enum: ['low', 'medium', 'high'] },
+      supportedMetrics: {
+        movement: { type: String },
+        vitals: { type: String },
+        recovery: { type: String },
+      },
       contributors: [{ type: String }],
     },
     confidence: {
