@@ -15,10 +15,11 @@ import Billing from './pages/Billing';
 import Insights from './pages/Insights';
 import WearableSetup from './pages/WearableSetup';
 import Verification from './pages/Verification';
+import Onboarding from './pages/Onboarding';
 import Layout from './components/Layout';
 import './App.css';
 
-const PrivateRoute = ({ children }) => {
+const PrivateRoute = ({ children, allowIncomplete = false }) => {
   const { user, loading } = useAuth();
   if (loading) return (
     <div className="loading-screen">
@@ -28,13 +29,18 @@ const PrivateRoute = ({ children }) => {
       </div>
     </div>
   );
-  return user ? children : <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!allowIncomplete && user?.onboarding?.completed !== true) {
+    return <Navigate to="/welcome" replace />;
+  }
+  return children;
 };
 
 const PublicRoute = ({ children }) => {
   const { user, loading } = useAuth();
   if (loading) return null;
-  return user ? <Navigate to="/dashboard" replace /> : children;
+  if (!user) return children;
+  return <Navigate to={user?.onboarding?.completed === true ? '/dashboard' : '/welcome'} replace />;
 };
 
 function App() {
@@ -60,6 +66,10 @@ function App() {
             <Route path="/" element={<PublicRoute><Landing /></PublicRoute>} />
             <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
             <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+            <Route
+              path="/welcome"
+              element={<PrivateRoute allowIncomplete><Onboarding /></PrivateRoute>}
+            />
             <Route
               path="/dashboard"
               element={<PrivateRoute><Layout><Dashboard /></Layout></PrivateRoute>}
