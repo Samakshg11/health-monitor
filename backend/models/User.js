@@ -34,6 +34,24 @@ const userSchema = new mongoose.Schema(
       name: { type: String, trim: true },
       role: { type: String, trim: true },
     },
+    onboarding: {
+      completed: { type: Boolean, default: false },
+      trackingGoal: {
+        type: String,
+        enum: ['fitness', 'wellness', 'recovery', 'clinical-awareness'],
+        default: 'fitness',
+      },
+      experienceLevel: {
+        type: String,
+        enum: ['beginner', 'regular', 'advanced'],
+        default: 'beginner',
+      },
+      preferredTrackingMode: {
+        type: String,
+        enum: ['phone_only', 'future_band', 'both'],
+        default: 'phone_only',
+      },
+    },
     subscription: {
       plan: {
         type: String,

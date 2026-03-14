@@ -4,6 +4,7 @@ import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import { format } from 'date-fns';
+import { downloadCsv } from '../utils/export';
 
 const Reports = () => {
   const [days, setDays] = useState(7);
@@ -42,6 +43,24 @@ const Reports = () => {
     </div>
   );
 
+  const exportReport = () => {
+    if (!chartData.length) return;
+    const rows = [
+      ['Date', 'Heart Rate', 'SpO2', 'Temperature', 'Steps', 'Calories', 'Distance Km', 'Active Minutes'],
+      ...chartData.map((row) => [
+        row.time,
+        row.heartRate ?? '',
+        row.spo2 ?? '',
+        row.temperature ?? '',
+        row.steps ?? '',
+        row.calories ?? '',
+        row.distance ?? '',
+        row.activeMinutes ?? '',
+      ]),
+    ];
+    downloadCsv(`vitalwatch-report-${days}d.csv`, rows);
+  };
+
   return (
     <div>
       <div className="page-header">
@@ -50,12 +69,15 @@ const Reports = () => {
             <h1>Health Reports</h1>
             <p>Vitals + fitness analytics over time</p>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {[7, 14, 30].map((d) => (
               <button key={d} onClick={() => setDays(d)} className={`btn btn-sm ${days === d ? 'btn-primary' : 'btn-secondary'}`} style={{ width: 'auto' }}>
                 {d}d
               </button>
             ))}
+            <button type="button" className="btn btn-secondary btn-sm" style={{ width: 'auto' }} onClick={exportReport} disabled={!chartData.length}>
+              Export CSV
+            </button>
           </div>
         </div>
       </div>

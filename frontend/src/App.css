@@ -2554,6 +2554,14 @@ body {
   gap: 22px;
 }
 
+.tracker-onboarding-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
 .tracker-hero {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) 280px;

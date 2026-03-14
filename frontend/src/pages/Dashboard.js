@@ -42,6 +42,7 @@ const metricCards = (latest) => {
       unit: 'BPM',
       trend: toneForStatus(heartRate?.status).label,
       status: heartRate?.status,
+      confidence: latest.confidence?.heartRate,
     },
     {
       key: 'oxygen',
@@ -51,6 +52,7 @@ const metricCards = (latest) => {
       unit: '%',
       trend: toneForStatus(spo2?.status).label,
       status: spo2?.status,
+      confidence: latest.confidence?.spo2,
     },
     {
       key: 'temp',
@@ -60,6 +62,7 @@ const metricCards = (latest) => {
       unit: '°C',
       trend: toneForStatus(temp?.status).label,
       status: temp?.status,
+      confidence: latest.confidence?.temperature,
     },
     {
       key: 'stress',
@@ -69,6 +72,7 @@ const metricCards = (latest) => {
       unit: '%',
       trend: toneForStatus(stress?.status).label,
       status: stress?.status,
+      confidence: latest.confidence?.stressLevel,
     },
     {
       key: 'bp',
@@ -78,6 +82,7 @@ const metricCards = (latest) => {
       unit: 'mmHg',
       trend: toneForStatus(bloodPressure?.status).label,
       status: bloodPressure?.status,
+      confidence: latest.confidence?.bloodPressure,
     },
     {
       key: 'sleep',
@@ -87,6 +92,7 @@ const metricCards = (latest) => {
       unit: 'hrs',
       trend: 'Last night',
       status: 'normal',
+      confidence: latest.confidence?.sleepHours,
     },
   ];
 };
@@ -103,6 +109,28 @@ const CustomTooltip = ({ active, payload, label }) => {
       ))}
     </div>
   );
+};
+
+const getMetricPresentation = ({ metricKey, metric, fallbackUnit, sourceMode, sourceDetails }) => {
+  const confidence = metricKey === 'bp'
+    ? metric?.confidence ?? sourceDetails?.overallConfidence
+    : metric?.confidence;
+  const lowConfidenceThreshold = { heart: 52, oxygen: 55, temp: 55, stress: 48, bp: 55 };
+  const isPhoneOnlyLowConfidence =
+    sourceMode === 'phone_only' &&
+    typeof confidence === 'number' &&
+    confidence < (lowConfidenceThreshold[metricKey] || 50);
+
+  if (metricKey === 'bp') {
+    const value = metric?.value;
+    return isPhoneOnlyLowConfidence
+      ? { value: 'Estimated', unit: 'trend only', trend: 'Low confidence' }
+      : { value: value || '—', unit: fallbackUnit, trend: metric?.trend };
+  }
+
+  return isPhoneOnlyLowConfidence
+    ? { value: 'Estimated', unit: 'trend only', trend: 'Low confidence' }
+    : { value: metric?.value ?? '—', unit: fallbackUnit, trend: metric?.trend };
 };
 
 const Dashboard = () => {
@@ -245,6 +273,20 @@ const Dashboard = () => {
       </div>
 
       <div className="page-content tracker-dashboard">
+        {user?.onboarding?.completed !== true && (
+          <section className="card tracker-onboarding-banner">
+            <div>
+              <span className="eyebrow">Setup</span>
+              <h3>Finish your tracking preferences</h3>
+              <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7 }}>
+                Tell VitalWatch whether you are optimizing for fitness, wellness, recovery, or future wearable use.
+                We use that to explain your data path more clearly.
+              </p>
+            </div>
+            <Link to="/profile" className="btn btn-primary btn-sm" style={{ width: 'auto' }}>Complete setup</Link>
+          </section>
+        )}
+
         <section className="tracker-hero">
           <div className="tracker-hero-main card">
             <div className="tracker-hero-copy">
@@ -426,16 +468,26 @@ const Dashboard = () => {
             </div>
           </div>
           <div className="tracker-vitals-grid">
-            {metricCards(latest).map((metric) => (
+            {metricCards(latest).map((metric) => {
+              const rendered = getMetricPresentation({
+                metricKey: metric.key === 'heart-rate' ? 'heart' : metric.key,
+                metric,
+                fallbackUnit: metric.unit,
+                sourceMode,
+                sourceDetails: { ...sourceDetails, overallConfidence: latest?.confidence?.overall },
+              });
+
+              return (
               <article key={metric.key} className={`tracker-vital-card status-${metric.status || 'normal'}`}>
                 <div className="tracker-vital-top">
                   <div className="tracker-vital-icon"><TrackerIcon name={metric.icon} size={18} /></div>
-                  <span>{metric.trend}</span>
+                  <span>{rendered.trend}</span>
                 </div>
-                <strong>{metric.value} <small>{metric.unit}</small></strong>
+                <strong>{rendered.value} <small>{rendered.unit}</small></strong>
                 <p>{metric.label}</p>
               </article>
-            ))}
+            );
+            })}
           </div>
         </section>
 

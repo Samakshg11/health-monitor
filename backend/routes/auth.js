@@ -8,6 +8,20 @@ const router = express.Router();
 const signToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' });
 
+const serializeUser = (user) => ({
+  id: user._id,
+  name: user.name,
+  email: user.email,
+  age: user.age,
+  gender: user.gender,
+  weight: user.weight,
+  height: user.height,
+  dailyGoals: user.dailyGoals,
+  subscription: user.subscription,
+  organization: user.organization,
+  onboarding: user.onboarding,
+});
+
 // @POST /api/auth/register
 router.post('/register', async (req, res) => {
   try {
@@ -39,18 +53,7 @@ router.post('/register', async (req, res) => {
     res.status(201).json({
       success: true,
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        age: user.age,
-        gender: user.gender,
-        weight: user.weight,
-        height: user.height,
-        dailyGoals: user.dailyGoals,
-        subscription: user.subscription,
-        organization: user.organization,
-      },
+      user: serializeUser(user),
     });
   } catch (err) {
     if (err.name === 'ValidationError') {
@@ -79,18 +82,7 @@ router.post('/login', async (req, res) => {
     res.json({
       success: true,
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        age: user.age,
-        gender: user.gender,
-        weight: user.weight,
-        height: user.height,
-        dailyGoals: user.dailyGoals,
-        subscription: user.subscription,
-        organization: user.organization,
-      },
+      user: serializeUser(user),
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -99,23 +91,41 @@ router.post('/login', async (req, res) => {
 
 // @GET /api/auth/me
 router.get('/me', protect, async (req, res) => {
-  res.json({ success: true, user: req.user });
+  res.json({ success: true, user: serializeUser(req.user) });
 });
 
 // @PUT /api/auth/profile
 router.put('/profile', protect, async (req, res) => {
   try {
-    const { name, age, gender, weight, height, organization, organizationName, organizationRole } = req.body;
+    const {
+      name,
+      age,
+      gender,
+      weight,
+      height,
+      organization,
+      organizationName,
+      organizationRole,
+      onboarding,
+    } = req.body;
     const normalizedOrganization = organization || {
       name: organizationName,
       role: organizationRole,
     };
     const user = await User.findByIdAndUpdate(
       req.user._id,
-      { name, age, gender, weight, height, organization: normalizedOrganization },
+      {
+        name,
+        age,
+        gender,
+        weight,
+        height,
+        organization: normalizedOrganization,
+        ...(onboarding ? { onboarding } : {}),
+      },
       { new: true, runValidators: true }
     );
-    res.json({ success: true, user });
+    res.json({ success: true, user: serializeUser(user) });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

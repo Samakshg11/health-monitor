@@ -16,6 +16,12 @@ const Profile = () => {
     organizationName: (user && user.organization && user.organization.name) || '',
     organizationRole: (user && user.organization && user.organization.role) || '',
   });
+  const [onboarding, setOnboarding] = useState({
+    completed: user?.onboarding?.completed || false,
+    trackingGoal: user?.onboarding?.trackingGoal || 'fitness',
+    experienceLevel: user?.onboarding?.experienceLevel || 'beginner',
+    preferredTrackingMode: user?.onboarding?.preferredTrackingMode || 'phone_only',
+  });
   const [goals, setGoals] = useState({ steps: 10000, activeMinutes: 60, hydration: 100 });
 
   useEffect(() => {
@@ -28,14 +34,28 @@ const Profile = () => {
     loadGoals();
   }, []);
 
+  useEffect(() => {
+    if (!user) return;
+    setOnboarding({
+      completed: user.onboarding?.completed || false,
+      trackingGoal: user.onboarding?.trackingGoal || 'fitness',
+      experienceLevel: user.onboarding?.experienceLevel || 'beginner',
+      preferredTrackingMode: user.onboarding?.preferredTrackingMode || 'phone_only',
+    });
+  }, [user]);
+
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
   const handleGoalChange = (e) => setGoals((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleOnboardingChange = (e) => {
+    const { name, value } = e.target;
+    setOnboarding((prev) => ({ ...prev, [name]: value, completed: true }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await updateProfile(form);
+      await updateProfile({ ...form, onboarding });
       toast.success('Profile updated!');
     } catch {
       toast.error('Failed to update profile');
@@ -142,6 +162,36 @@ const Profile = () => {
                   </div>
                 </div>
               </div>
+              <div className="section-title">🧭 Tracking Setup</div>
+              <div className="input-group">
+                <div className="input-field">
+                  <label>Main Goal</label>
+                  <select name="trackingGoal" value={onboarding.trackingGoal} onChange={handleOnboardingChange}>
+                    <option value="fitness">Fitness</option>
+                    <option value="wellness">Wellness</option>
+                    <option value="recovery">Recovery</option>
+                    <option value="clinical-awareness">Clinical Awareness</option>
+                  </select>
+                </div>
+                <div className="input-field">
+                  <label>Experience Level</label>
+                  <select name="experienceLevel" value={onboarding.experienceLevel} onChange={handleOnboardingChange}>
+                    <option value="beginner">Beginner</option>
+                    <option value="regular">Regular</option>
+                    <option value="advanced">Advanced</option>
+                  </select>
+                </div>
+              </div>
+              <div className="input-group">
+                <div className="input-field">
+                  <label>Preferred Tracking Mode</label>
+                  <select name="preferredTrackingMode" value={onboarding.preferredTrackingMode} onChange={handleOnboardingChange}>
+                    <option value="phone_only">Phone only</option>
+                    <option value="future_band">Future band when ready</option>
+                    <option value="both">Both paths</option>
+                  </select>
+                </div>
+              </div>
               <button type="submit" className="btn btn-primary" disabled={loading}>
                 {loading ? 'Saving...' : 'Save Profile'}
               </button>
@@ -194,6 +244,23 @@ const Profile = () => {
                 <div>🫁 SpO₂: 95–100%</div>
                 <div>🌡️ Temp: 36.1–37.2°C</div>
                 <div>👣 Steps: 10,000/day</div>
+              </div>
+            </div>
+            <div className="card">
+              <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: 12 }}>Tracking Mode</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', marginBottom: 8 }}>
+                {onboarding.preferredTrackingMode === 'phone_only'
+                  ? 'Phone-first'
+                  : onboarding.preferredTrackingMode === 'future_band'
+                    ? 'Future wearable'
+                    : 'Flexible roadmap'}
+              </div>
+              <div style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', lineHeight: 1.7 }}>
+                {onboarding.preferredTrackingMode === 'phone_only'
+                  ? 'Use free phone sensors today and keep vitals more conservative when confidence is low.'
+                  : onboarding.preferredTrackingMode === 'future_band'
+                    ? 'Prepare the app around a future companion band while still letting phone-only mode work today.'
+                    : 'Support both phone-first tracking and a future wearable path as the product evolves.'}
               </div>
             </div>
           </div>

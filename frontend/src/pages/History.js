@@ -3,6 +3,7 @@ import { format, isToday, isYesterday } from 'date-fns';
 import toast from 'react-hot-toast';
 import { getReadings, deleteReading } from '../utils/api';
 import { TrackerIcon } from '../components/TrackerUI';
+import { downloadCsv } from '../utils/export';
 
 const formatDayLabel = (value) => {
   const date = new Date(value);
@@ -70,6 +71,27 @@ const History = () => {
     return { steps, activeSessions, elevatedReadings };
   }, [readings]);
 
+  const exportHistory = () => {
+    if (!readings.length) return;
+    const rows = [
+      ['Recorded At', 'Mode', 'Source', 'Heart Rate', 'SpO2', 'Temperature', 'Steps', 'Distance Km', 'Sleep Hours', 'Stress', 'Confidence'],
+      ...readings.map((reading) => [
+        new Date(reading.recordedAt).toISOString(),
+        reading.workoutMode || 'balanced',
+        reading.sourceDetails?.label || reading.source || '',
+        reading.heartRate?.value ?? '',
+        reading.spo2?.value ?? '',
+        reading.temperature?.value ?? '',
+        reading.steps?.value ?? '',
+        reading.distance?.value ?? '',
+        reading.sleepHours?.value ?? '',
+        reading.stressLevel?.value ?? '',
+        reading.confidence?.overall ?? '',
+      ]),
+    ];
+    downloadCsv('vitalwatch-history.csv', rows);
+  };
+
   return (
     <div>
       <div className="page-header tracker-header">
@@ -78,6 +100,9 @@ const History = () => {
           <h1>Your recent days</h1>
           <p>Browse snapshots the way a tracker app would: by day, time, and session feel instead of raw tables.</p>
         </div>
+        <button type="button" className="btn btn-secondary btn-sm" style={{ width: 'auto' }} onClick={exportHistory} disabled={!readings.length}>
+          Export CSV
+        </button>
       </div>
 
       <div className="page-content">

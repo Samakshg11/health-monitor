@@ -42,6 +42,13 @@ export const AuthProvider = ({ children }) => {
     hasMotion: false,
     motionSeenAt: 0,
   });
+
+  const defaultOnboarding = {
+    completed: false,
+    trackingGoal: 'fitness',
+    experienceLevel: 'beginner',
+    preferredTrackingMode: 'phone_only',
+  };
   const wearableRef = useRef({
     paired: localStorage.getItem('vw_wearable_paired') === 'true',
     battery: Number(localStorage.getItem('vw_wearable_battery') || 87),
@@ -485,6 +492,11 @@ export const AuthProvider = ({ children }) => {
       organization: {
         name: profileData.organizationName || '',
         role: profileData.organizationRole || '',
+      },
+      onboarding: {
+        ...defaultOnboarding,
+        ...(user?.onboarding || {}),
+        ...(profileData.onboarding || {}),
       },
     };
     const { data } = await API.put('/auth/profile', payload);

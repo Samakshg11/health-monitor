@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getInsights } from '../utils/api';
+import { useAuth } from '../context/AuthContext';
 
 const statusColor = {
   stable: '#2ecc71',
@@ -9,6 +10,7 @@ const statusColor = {
 };
 
 const Insights = () => {
+  const { wearable } = useAuth();
   const [days, setDays] = useState(14);
   const [loading, setLoading] = useState(true);
   const [insights, setInsights] = useState(null);
@@ -52,6 +54,14 @@ const Insights = () => {
       </div>
 
       <div className="page-content">
+        {!wearable.paired && (
+          <div className="card" style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.08em', marginBottom: 8 }}>Source note</div>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7 }}>
+              You are currently in phone-first mode. Activity trends are stronger than body-vital precision, so guidance should be read as directional rather than device-grade.
+            </p>
+          </div>
+        )}
         <div className="card" style={{ marginBottom: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
             <div>
