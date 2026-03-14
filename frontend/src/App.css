@@ -3137,6 +3137,7 @@ body {
   color: var(--text-secondary);
   line-height: 1.7;
   max-width: 58ch;
+  overflow-wrap: anywhere;
 }
 
 .tracker-hero-badges {
@@ -3354,12 +3355,17 @@ body {
   align-items: center;
   gap: 8px;
   color: var(--text-secondary);
+  min-width: 0;
 }
 
 .tracker-summary-row strong,
 .tracker-check-item strong,
 .tracker-diagnostic-row strong {
   font-family: var(--font-display);
+  max-width: 52%;
+  text-align: right;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .tracker-diagnostic-row div {
@@ -3399,6 +3405,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   margin-bottom: 16px;
 }
 

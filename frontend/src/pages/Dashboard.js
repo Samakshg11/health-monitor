@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { format, formatDistanceToNow } from 'date-fns';
 import {
@@ -186,15 +186,63 @@ const hasDirectBodySignals = (reading) => Boolean(
   reading?.stressLevel?.value
 );
 
+const buildCompositeBodyReading = (readings = []) => {
+  const ordered = readings.filter(Boolean);
+  const baseReading = ordered.find(hasDirectBodySignals);
+  if (!baseReading) return null;
+
+  const metricKeys = [
+    'heartRate',
+    'bloodPressure',
+    'spo2',
+    'temperature',
+    'sleepScore',
+    'sleepHours',
+    'stressLevel',
+    'hydration',
+  ];
+
+  const composite = {
+    ...baseReading,
+    confidence: { ...(baseReading.confidence || {}) },
+  };
+
+  for (const key of metricKeys) {
+    const provider = ordered.find((reading) => {
+      if (key === 'bloodPressure') {
+        return Boolean(reading?.bloodPressure?.systolic);
+      }
+      return reading?.[key]?.value !== undefined && reading?.[key]?.value !== null;
+    });
+
+    if (provider) {
+      composite[key] = provider[key];
+      if (provider.confidence?.[key] !== undefined) {
+        composite.confidence[key] = provider.confidence[key];
+      }
+    }
+  }
+
+  if (composite.confidence.overall === undefined) {
+    composite.confidence.overall = baseReading.confidence?.overall;
+  }
+
+  return composite;
+};
+
 const Dashboard = () => {
   const { user, tracking, enableTracking } = useAuth();
   const { latestReading: socketReading, liveAlerts } = useSocket();
   const [latest, setLatest] = useState(null);
-  const [latestBodyReading, setLatestBodyReading] = useState(null);
+  const [recentReadings, setRecentReadings] = useState([]);
   const [chartData, setChartData] = useState([]);
   const [fitnessSummary, setFitnessSummary] = useState(null);
   const [billingSummary, setBillingSummary] = useState(null);
   const [loading, setLoading] = useState(true);
+  const bodyReading = useMemo(
+    () => buildCompositeBodyReading([latest, ...recentReadings]),
+    [latest, recentReadings]
+  );
 
   const loadFitnessSummary = useCallback(async () => {
     try {
@@ -214,8 +262,7 @@ const Dashboard = () => {
       setLatest(latestRes.data.reading);
       setBillingSummary(billingRes.data);
       const recentReadings = readingsRes.data.readings || [];
-      const directBodyReading = [latestRes.data.reading, ...recentReadings].find(hasDirectBodySignals) || null;
-      setLatestBodyReading(directBodyReading);
+      setRecentReadings(recentReadings);
 
       const readings = recentReadings.reverse();
       setChartData(
@@ -240,9 +287,7 @@ const Dashboard = () => {
   useEffect(() => {
     if (!socketReading) return;
     setLatest(socketReading);
-    if (hasDirectBodySignals(socketReading)) {
-      setLatestBodyReading(socketReading);
-    }
+    setRecentReadings((prev) => [socketReading, ...prev].slice(0, 20));
     setChartData((prev) => {
       const point = {
         time: format(new Date(socketReading.recordedAt), 'HH:mm'),
@@ -266,7 +311,6 @@ const Dashboard = () => {
   const greeting = hour < 12 ? 'Morning' : hour < 17 ? 'Afternoon' : 'Evening';
   const totals = fitnessSummary?.totals;
   const progress = fitnessSummary?.progress;
-  const bodyReading = latestBodyReading || latest;
   const stepGoalProgress = progress?.steps ?? 0;
   const activeGoalProgress = progress?.activeMinutes ?? 0;
   const hydrationGoalProgress = progress?.hydration ?? 0;
