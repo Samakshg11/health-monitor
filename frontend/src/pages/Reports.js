@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { getStats } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -41,6 +42,7 @@ const Reports = () => {
   const [days, setDays] = useState(7);
   const [stats, setStats] = useState(null);
   const [chartData, setChartData] = useState([]);
+  const [sourceMix, setSourceMix] = useState({ phone: 0, manual: 0, preview: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -50,6 +52,11 @@ const Reports = () => {
         const { data } = await getStats(days);
         setStats(data.stats);
         const readings = data.readings || [];
+        setSourceMix({
+          phone: readings.filter((r) => r.source === 'estimated').length,
+          manual: readings.filter((r) => r.source === 'manual').length,
+          preview: readings.filter((r) => r.source === 'device').length,
+        });
         setChartData(readings.map((r) => ({
           time: format(new Date(r.recordedAt), 'MM/dd'),
           heartRate: r.heartRate && r.heartRate.value,
@@ -148,8 +155,18 @@ const Reports = () => {
               <p style={{ color: 'var(--text-secondary)', marginTop: 14, lineHeight: 1.7 }}>{emphasis}</p>
               {onboarding.preferredTrackingMode === 'phone_only' && (
                 <p style={{ color: 'var(--text-secondary)', marginTop: 10, lineHeight: 1.7 }}>
-                  In phone-only mode, movement trends deserve more trust than exact body-vital precision. Use this report to confirm direction, not device-grade certainty.
+                  In phone-only mode, movement trends deserve more trust than exact body-vital precision. Use this report to confirm direction, and use manual check-ins when you want explicit vitals in the timeline.
                 </p>
+              )}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
+                <span className="tracker-pill">Phone sync {sourceMix.phone}</span>
+                <span className="tracker-pill">Manual check-ins {sourceMix.manual}</span>
+                <span className="tracker-pill">Preview band {sourceMix.preview}</span>
+              </div>
+              {onboarding.preferredTrackingMode === 'phone_only' && (
+                <Link to="/log" className="btn btn-secondary btn-sm" style={{ width: 'auto', marginTop: 12 }}>
+                  Add manual vitals
+                </Link>
               )}
             </div>
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { format, isToday, isYesterday } from 'date-fns';
 import toast from 'react-hot-toast';
 import { getReadings, deleteReading } from '../utils/api';
@@ -78,6 +79,12 @@ const scoreSnapshot = (reading, trackingGoal) => {
   if (steps >= 7000 && !flagged) return 'strong';
   if (steps >= 4000) return 'steady';
   return 'watch';
+};
+
+const sourceBadge = (reading) => {
+  if (reading.source === 'manual') return 'Manual check-in';
+  if (reading.sourceDetails?.mode === 'band_plus_phone') return 'Future band preview';
+  return 'Phone sync';
 };
 
 const History = () => {
@@ -210,6 +217,11 @@ const History = () => {
               In phone-first mode, movement history is stronger than exact body-vital precision. Use repeated patterns to build confidence.
             </p>
           )}
+          {onboarding.preferredTrackingMode === 'phone_only' && (
+            <Link to="/log" className="btn btn-secondary btn-sm" style={{ width: 'auto', marginTop: 10 }}>
+              Add manual vitals
+            </Link>
+          )}
         </section>
 
         {overview && (
@@ -281,14 +293,14 @@ const History = () => {
 
                       <div className="tracker-session-tags" style={{ marginBottom: 12 }}>
                         <span>{scoreLabel[scoreSnapshot(reading, onboarding.trackingGoal)]}</span>
-                        <span>{reading.sourceDetails?.label || reading.source || 'Estimated source'}</span>
+                        <span>{sourceBadge(reading)}</span>
                         <span>{typeof reading.confidence?.overall === 'number' ? `${reading.confidence.overall}% confidence` : 'Confidence pending'}</span>
                       </div>
 
                       <div className="tracker-session-metrics">
-                        <span><TrackerIcon name="heart" size={14} /> {reading.heartRate?.value || '—'} BPM</span>
-                        <span><TrackerIcon name="oxygen" size={14} /> {reading.spo2?.value || '—'}%</span>
-                        <span><TrackerIcon name="temperature" size={14} /> {reading.temperature?.value || '—'}°C</span>
+                        <span><TrackerIcon name="heart" size={14} /> {reading.heartRate?.value || (reading.source === 'manual' ? 'Not entered' : 'Check-in needed')}</span>
+                        <span><TrackerIcon name="oxygen" size={14} /> {reading.spo2?.value || (reading.source === 'manual' ? 'Not entered' : 'Check-in needed')}</span>
+                        <span><TrackerIcon name="temperature" size={14} /> {reading.temperature?.value || (reading.source === 'manual' ? 'Not entered' : 'Check-in needed')}</span>
                         <span><TrackerIcon name="steps" size={14} /> {(reading.steps?.value || 0).toLocaleString()} steps</span>
                         <span><TrackerIcon name="distance" size={14} /> {reading.distance?.value || '—'} km</span>
                         <span><TrackerIcon name="sleep" size={14} /> {reading.sleepHours?.value || '—'} hrs</span>

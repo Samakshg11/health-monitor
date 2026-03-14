@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { getAlerts, markAlertRead, markAllAlertsRead, deleteAlert } from '../utils/api';
 import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
@@ -110,8 +111,13 @@ const Alerts = () => {
           </div>
           {onboarding.preferredTrackingMode === 'phone_only' && (
             <p style={{ color: 'var(--text-secondary)', marginTop: 14, lineHeight: 1.7 }}>
-              Phone-only mode is strongest for movement patterns. Read weak-confidence vital alerts directionally and prioritize repeated patterns over one-off spikes.
+              Phone-only mode is strongest for movement patterns. Read weak-confidence vital alerts directionally and prioritize repeated patterns over one-off spikes. For explicit vitals, rely on manual check-ins.
             </p>
+          )}
+          {onboarding.preferredTrackingMode === 'phone_only' && (
+            <Link to="/log" className="btn btn-secondary btn-sm" style={{ width: 'auto', marginTop: 10 }}>
+              Add manual vitals
+            </Link>
           )}
         </div>
         {loading ? (

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { getInsights } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -112,8 +113,11 @@ const Insights = () => {
           <div className="card" style={{ marginBottom: 20 }}>
             <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.08em', marginBottom: 8 }}>Source note</div>
             <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7 }}>
-              You are currently in phone-first mode. Activity trends are stronger than body-vital precision, so guidance should be read as directional rather than device-grade.
+              You are currently in phone-first mode. Activity trends are stronger than body-vital precision, so guidance should be read as directional rather than device-grade. For explicit vitals, use manual check-ins.
             </p>
+            <Link to="/log" className="btn btn-secondary btn-sm" style={{ width: 'auto', marginTop: 12 }}>
+              Add manual vitals
+            </Link>
           </div>
         )}
         <div className="card" style={{ marginBottom: 20 }}>
@@ -138,10 +142,12 @@ const Insights = () => {
           <div className="stat-card">
             <div className="stat-value">{averages.heartRate ?? '—'}</div>
             <div className="stat-label">Avg Heart Rate</div>
+            {!wearable.paired && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4 }}>Manual or preview source</div>}
           </div>
           <div className="stat-card">
             <div className="stat-value">{averages.spo2 ?? '—'}</div>
             <div className="stat-label">Avg SpO₂</div>
+            {!wearable.paired && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4 }}>Manual or preview source</div>}
           </div>
           <div className="stat-card">
             <div className="stat-value">{averages.steps ?? '—'}</div>
