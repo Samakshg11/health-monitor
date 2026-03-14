@@ -29,6 +29,7 @@ const Layout = ({ children }) => {
   const navItems = [
     { to: '/dashboard', icon: 'today', label: 'Today', hint: 'Live overview' },
     { to: '/history', icon: 'activity', label: 'Activity', hint: 'Sessions and days' },
+    { to: '/log', icon: 'heart', label: 'Check-In', hint: 'Manual vitals' },
     { to: '/reports', icon: 'trends', label: 'Trends', hint: 'Weekly patterns' },
     { to: '/insights', icon: 'recovery', label: 'Recovery', hint: 'Coaching and insights' },
     { to: '/wearable', icon: 'device', label: 'Device', hint: 'Band and sync status' },

@@ -41,7 +41,24 @@ const LogReading = () => {
       if (form.hydration) payload.hydration = { value: Number(form.hydration) };
       if (form.sleepScore) payload.sleepScore = { value: Number(form.sleepScore) };
       if (form.workoutMode) payload.workoutMode = form.workoutMode;
-      if (form.notes) payload.notes = form.notes;
+      payload.source = 'manual';
+      payload.sourceDetails = {
+        mode: 'manual_entry',
+        label: 'Manual check-in',
+        deviceName: 'Manual entry',
+        primarySource: 'User-entered health check-in',
+        movementSource: payload.steps || payload.distance || payload.activeMinutes ? 'User-entered activity summary' : 'No movement metrics entered',
+        recoverySource: payload.sleepScore || payload.hydration ? 'User-entered wellness summary' : 'No recovery metrics entered',
+        confidenceTier: 'high',
+        supportedMetrics: {
+          movement: payload.steps || payload.distance || payload.activeMinutes ? 'manual summary' : 'not entered',
+          vitals: payload.heartRate || payload.bloodPressure || payload.spo2 || payload.temperature ? 'manual measurement' : 'not entered',
+          recovery: payload.sleepScore || payload.hydration ? 'manual summary' : 'not entered',
+        },
+        contributors: ['manual-check-in'],
+      };
+      if (form.notes) payload.notes = `Manual check-in · ${form.notes}`;
+      else payload.notes = 'Manual check-in';
 
       const { data } = await submitReading(payload);
 
@@ -66,8 +83,8 @@ const LogReading = () => {
   return (
     <div>
       <div className="page-header">
-        <h1>Log Health Reading</h1>
-        <p>Track vitals and fitness metrics in one reading.</p>
+        <h1>Manual Check-In</h1>
+        <p>Add free, explicit health measurements so your vitals come from a clear source instead of synthetic estimation.</p>
       </div>
       <div className="page-content">
         <form onSubmit={handleSubmit}>

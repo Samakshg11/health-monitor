@@ -115,6 +115,15 @@ const getMetricPresentation = ({ metricKey, metric, fallbackUnit, sourceMode, so
   const confidence = metricKey === 'bp'
     ? metric?.confidence ?? sourceDetails?.overallConfidence
     : metric?.confidence;
+  const manualRequired =
+    sourceMode === 'phone_only' &&
+    sourceDetails?.supportedMetrics?.vitals === 'manual check-in required' &&
+    ['heart', 'oxygen', 'temp', 'stress', 'bp'].includes(metricKey);
+
+  if (manualRequired) {
+    return { value: 'Check in', unit: 'manual', trend: 'No direct source' };
+  }
+
   const lowConfidenceThreshold = { heart: 52, oxygen: 55, temp: 55, stress: 48, bp: 55 };
   const isPhoneOnlyLowConfidence =
     sourceMode === 'phone_only' &&
@@ -288,7 +297,7 @@ const Dashboard = () => {
   const sourceHeadline = sourceMode === 'band_plus_phone' ? 'Future band preview flow' : 'Phone-only tracking';
   const sourceSummary = sourceMode === 'band_plus_phone'
     ? `${sourceDetails?.primarySource || 'Band-preview sensors'} feed vitals, while ${sourceDetails?.movementSource || 'phone GPS'} helps refine activity.`
-    : `${sourceDetails?.movementSource || 'Phone motion and GPS'} power movement, while vitals are estimated from activity and recent patterns.`;
+    : `${sourceDetails?.movementSource || 'Phone motion and GPS'} power movement, while body vitals should come from manual check-ins until a stronger device source is connected.`;
   const selectedGoal = goalCopy[onboarding.trackingGoal] || goalCopy.fitness;
   const selectedExperience = experienceCopy[onboarding.experienceLevel] || experienceCopy.beginner;
   const confidenceTier = sourceDetails?.confidenceTier || (latest?.confidence?.overall >= 78 ? 'high' : latest?.confidence?.overall >= 56 ? 'medium' : 'low');
@@ -340,9 +349,17 @@ const Dashboard = () => {
               <div className="tracker-hero-badges">
                 <span className="tracker-pill"><TrackerIcon name="device" size={14} /> {sourceHeadline}</span>
                 <span className="tracker-pill"><TrackerIcon name="signal" size={14} /> {confidenceTierCopy[confidenceTier] || 'Moderate confidence'}</span>
-                <span className="tracker-pill"><TrackerIcon name="heart" size={14} /> {latest?.heartRate?.value ?? '—'} BPM</span>
-                <span className="tracker-pill"><TrackerIcon name="oxygen" size={14} /> {latest?.spo2?.value ?? '—'}% SpO2</span>
-                <span className="tracker-pill"><TrackerIcon name="temperature" size={14} /> {latest?.temperature?.value ?? '—'}°C</span>
+                {sourceMode === 'phone_only' && supportedMetrics.vitals === 'manual check-in required' ? (
+                  <Link to="/log" className="tracker-pill" style={{ textDecoration: 'none' }}>
+                    <TrackerIcon name="heart" size={14} /> Add manual vitals
+                  </Link>
+                ) : (
+                  <>
+                    <span className="tracker-pill"><TrackerIcon name="heart" size={14} /> {latest?.heartRate?.value ?? '—'} BPM</span>
+                    <span className="tracker-pill"><TrackerIcon name="oxygen" size={14} /> {latest?.spo2?.value ?? '—'}% SpO2</span>
+                    <span className="tracker-pill"><TrackerIcon name="temperature" size={14} /> {latest?.temperature?.value ?? '—'}°C</span>
+                  </>
+                )}
               </div>
             </div>
 

@@ -16,6 +16,7 @@ import Insights from './pages/Insights';
 import WearableSetup from './pages/WearableSetup';
 import Verification from './pages/Verification';
 import Onboarding from './pages/Onboarding';
+import LogReading from './pages/LogReading';
 import Layout from './components/Layout';
 import './App.css';
 
@@ -74,7 +75,10 @@ function App() {
               path="/dashboard"
               element={<PrivateRoute><Layout><Dashboard /></Layout></PrivateRoute>}
             />
-            <Route path="/log" element={<Navigate to="/dashboard" replace />} />
+            <Route
+              path="/log"
+              element={<PrivateRoute><Layout><LogReading /></Layout></PrivateRoute>}
+            />
             <Route
               path="/history"
               element={<PrivateRoute><Layout><History /></Layout></PrivateRoute>}

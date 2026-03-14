@@ -449,7 +449,7 @@ export const AuthProvider = ({ children }) => {
       const supportedMetrics = phoneOnly
         ? {
             movement: 'stronger',
-            vitals: vitalsConfidence >= 40 ? 'directional' : 'estimated',
+            vitals: 'manual check-in required',
             recovery: sleepConfidence >= 55 ? 'trend-based' : 'limited',
           }
         : {
@@ -481,10 +481,6 @@ export const AuthProvider = ({ children }) => {
       };
 
       const payload = {
-        heartRate: { value: finalHeartRate },
-        bloodPressure: { systolic, diastolic },
-        spo2: { value: spo2 },
-        temperature: { value: temperature },
         steps: { value: stepsValue },
         calories: { value: Math.round(clamp((stepsValue * 0.045) + (activeMinutesValue * 4) + rand(8, 18), 10, 58)) },
         distance: { value: distanceEstimate },
@@ -513,6 +509,13 @@ export const AuthProvider = ({ children }) => {
         workoutMode: mode,
         notes: `${sourceDetails.label} flow · ${mode} · conf ${overallConfidence}% · ${confidenceTier} confidence`,
       };
+
+      if (!phoneOnly) {
+        payload.heartRate = { value: finalHeartRate };
+        payload.bloodPressure = { systolic, diastolic };
+        payload.spo2 = { value: spo2 };
+        payload.temperature = { value: temperature };
+      }
 
       setVerification((prev) => ({
         ...prev,
