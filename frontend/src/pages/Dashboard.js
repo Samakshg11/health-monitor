@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { format, formatDistanceToNow } from 'date-fns';
 import {
   Area,
@@ -284,6 +284,8 @@ const buildCompositeBodyReading = (readings = []) => {
 };
 
 const Dashboard = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { user, tracking, enableTracking, disableTracking, verification, wearable } = useAuth();
   const { latestReading: socketReading, liveAlerts } = useSocket();
   const [latest, setLatest] = useState(null);
@@ -292,6 +294,7 @@ const Dashboard = () => {
   const [fitnessSummary, setFitnessSummary] = useState(null);
   const [billingSummary, setBillingSummary] = useState(null);
   const [loading, setLoading] = useState(true);
+  const freshReading = location.state?.freshReading || null;
   const bodyReading = useMemo(
     () => buildCompositeBodyReading([latest, ...recentReadings]),
     [latest, recentReadings]
@@ -340,6 +343,18 @@ const Dashboard = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (!freshReading) return;
+
+    setLatest((prev) => {
+      if (!prev) return freshReading;
+      return new Date(freshReading.recordedAt || 0) >= new Date(prev.recordedAt || 0) ? freshReading : prev;
+    });
+    setRecentReadings((prev) => [freshReading, ...prev.filter((reading) => reading?._id !== freshReading?._id)].slice(0, 20));
+
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [freshReading, location.pathname, navigate]);
 
   useEffect(() => {
     if (!socketReading) return;

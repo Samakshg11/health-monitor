@@ -233,7 +233,12 @@ const LogReading = () => {
       } else {
         toast.success('Manual check-in saved');
       }
-      navigate('/dashboard');
+      navigate('/dashboard', {
+        state: {
+          freshReading: data.reading,
+          fromCheckIn: true,
+        },
+      });
     } catch (err) {
       const errorMessage = err?.response?.data?.message || 'Failed to save manual check-in';
       toast.error(errorMessage);
