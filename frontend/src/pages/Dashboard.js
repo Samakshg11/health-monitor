@@ -227,6 +227,51 @@ const buildCompositeBodyReading = (readings = []) => {
     composite.confidence.overall = baseReading.confidence?.overall;
   }
 
+  const hasMovement =
+    composite.steps?.value !== undefined ||
+    composite.distance?.value !== undefined ||
+    composite.activeMinutes?.value !== undefined ||
+    composite.calories?.value !== undefined ||
+    composite.cadence?.value !== undefined;
+  const hasVitals =
+    composite.heartRate?.value !== undefined ||
+    composite.bloodPressure?.systolic !== undefined ||
+    composite.spo2?.value !== undefined ||
+    composite.temperature?.value !== undefined;
+  const hasRecovery =
+    composite.sleepScore?.value !== undefined ||
+    composite.sleepHours?.value !== undefined ||
+    composite.stressLevel?.value !== undefined ||
+    composite.hydration?.value !== undefined;
+
+  composite.sourceDetails = {
+    ...(baseReading.sourceDetails || {}),
+    supportedMetrics: {
+      movement: hasMovement ? 'manual summary' : 'no activity logged',
+      vitals: hasVitals ? 'manual measurement' : 'not entered',
+      recovery: hasRecovery ? 'manual summary' : 'not entered',
+    },
+  };
+
+  const confidenceValues = [
+    composite.confidence.heartRate,
+    composite.confidence.bloodPressure,
+    composite.confidence.spo2,
+    composite.confidence.temperature,
+    composite.confidence.sleepScore,
+    composite.confidence.sleepHours,
+    composite.confidence.stressLevel,
+    composite.confidence.steps,
+    composite.confidence.distance,
+    composite.confidence.activeMinutes,
+  ].filter((value) => typeof value === 'number');
+
+  if (confidenceValues.length) {
+    composite.confidence.overall = Math.round(
+      confidenceValues.reduce((sum, value) => sum + value, 0) / confidenceValues.length
+    );
+  }
+
   return composite;
 };
 
