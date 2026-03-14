@@ -84,6 +84,7 @@ const WearableSetup = () => {
   }, [latest]);
 
   const source = wearable.sourceMode || latest?.source || 'estimated';
+  const sourceDetails = latest?.sourceDetails;
   const lastSync = wearable.lastSyncAt ? new Date(wearable.lastSyncAt).toLocaleString() : 'No sync yet';
   const syncLabel = wearable.lastSyncStatus === 'ok'
     ? 'Connected and syncing'
@@ -105,12 +106,45 @@ const WearableSetup = () => {
       </div>
 
       <div className="page-content">
+        <section className="tracker-device-details" style={{ marginBottom: 18 }}>
+          <div className="card">
+            <div className="panel-heading">
+              <div>
+                <span className="eyebrow">Phone only</span>
+                <h3>Without a band</h3>
+              </div>
+            </div>
+            <div className="tracker-diagnostics-list">
+              <div className="tracker-diagnostic-row"><span>Movement</span><strong>Phone motion + GPS</strong></div>
+              <div className="tracker-diagnostic-row"><span>Vitals</span><strong>Estimated model</strong></div>
+              <div className="tracker-diagnostic-row"><span>Confidence</span><strong>Moderate to low</strong></div>
+            </div>
+          </div>
+          <div className="card">
+            <div className="panel-heading">
+              <div>
+                <span className="eyebrow">Band connected</span>
+                <h3>With VitalBand</h3>
+              </div>
+            </div>
+            <div className="tracker-diagnostics-list">
+              <div className="tracker-diagnostic-row"><span>Movement</span><strong>Band steps + phone correction</strong></div>
+              <div className="tracker-diagnostic-row"><span>Vitals</span><strong>Optical band sensors</strong></div>
+              <div className="tracker-diagnostic-row"><span>Confidence</span><strong>Higher and more direct</strong></div>
+            </div>
+          </div>
+        </section>
+
         <section className="tracker-device-grid">
           <div className="card tracker-device-hero">
             <div className="tracker-device-copy">
               <span className="eyebrow">Connection</span>
               <h2>{syncLabel}</h2>
-              <p>Source mode is <strong style={{ textTransform: 'capitalize' }}>{source}</strong>. Last sync: {lastSync}.</p>
+              <p>
+                Source mode is <strong>{sourceDetails?.label || source.replace(/_/g, ' ')}</strong>.
+                {' '}Last sync: {lastSync}.
+                {' '}{sourceDetails?.primarySource ? `${sourceDetails.primarySource}.` : ''}
+              </p>
               <div className="tracker-hero-badges">
                 <span className="tracker-pill"><TrackerIcon name="sync" size={14} /> {wearable.paired ? 'Band paired' : 'Awaiting pair'}</span>
                 <span className="tracker-pill"><TrackerIcon name="signal" size={14} /> <SignalBars strength={signalStrength} /></span>
@@ -181,33 +215,64 @@ const WearableSetup = () => {
             </div>
           </div>
 
-          <div className="card">
-            <div className="panel-heading">
-              <div>
-                <span className="eyebrow">Diagnostics</span>
-                <h3>Sensor quality</h3>
+            <div className="card">
+              <div className="panel-heading">
+                <div>
+                  <span className="eyebrow">Pipeline</span>
+                  <h3>Current source path</h3>
+                </div>
               </div>
-            </div>
-            {loading ? (
-              <p style={{ color: 'var(--text-secondary)' }}>Loading diagnostics...</p>
-            ) : (
-              <div className="tracker-diagnostics-list">
-                {['heartRate', 'bloodPressure', 'spo2', 'steps', 'distance', 'sleepScore', 'stressLevel'].map((key) => {
-                  const value = latest?.confidence?.[key];
-                  const tone = confidenceTone(typeof value === 'number' ? value : 50);
-                  return (
-                    <div key={key} className="tracker-diagnostic-row">
-                      <span>{key.replace(/([A-Z])/g, ' $1').trim()}</span>
-                      <div>
-                        <strong>{typeof value === 'number' ? `${value}%` : '—'}</strong>
-                        <small style={{ color: tone.color }}>{tone.label}</small>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+              {loading ? (
+                <p style={{ color: 'var(--text-secondary)' }}>Loading diagnostics...</p>
+              ) : (
+                <div className="tracker-diagnostics-list">
+                  <div className="tracker-diagnostic-row">
+                    <span>Primary source</span>
+                    <strong>{sourceDetails?.primarySource || 'Unknown'}</strong>
+                  </div>
+                  <div className="tracker-diagnostic-row">
+                    <span>Movement path</span>
+                    <strong>{sourceDetails?.movementSource || 'Unknown'}</strong>
+                  </div>
+                  <div className="tracker-diagnostic-row">
+                    <span>Recovery path</span>
+                    <strong>{sourceDetails?.recoverySource || 'Unknown'}</strong>
+                  </div>
+                  <div className="tracker-diagnostic-row">
+                    <span>Contributors</span>
+                    <strong>{(sourceDetails?.contributors || ['history-model']).join(', ')}</strong>
+                  </div>
+                </div>
+              )}
           </div>
+        </section>
+
+        <section className="card">
+          <div className="panel-heading">
+            <div>
+              <span className="eyebrow">Confidence</span>
+              <h3>Metric quality</h3>
+            </div>
+          </div>
+          {loading ? (
+            <p style={{ color: 'var(--text-secondary)' }}>Loading diagnostics...</p>
+          ) : (
+            <div className="tracker-diagnostics-list">
+              {['heartRate', 'bloodPressure', 'spo2', 'steps', 'distance', 'sleepScore', 'stressLevel'].map((key) => {
+                const value = latest?.confidence?.[key];
+                const tone = confidenceTone(typeof value === 'number' ? value : 50);
+                return (
+                  <div key={key} className="tracker-diagnostic-row">
+                    <span>{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                    <div>
+                      <strong>{typeof value === 'number' ? `${value}%` : '—'}</strong>
+                      <small style={{ color: tone.color }}>{tone.label}</small>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </section>
       </div>
 

@@ -158,6 +158,37 @@ export const AuthProvider = ({ children }) => {
     setSensorStatus((prev) => ({ ...prev, geoPermission, motionPermission }));
   };
 
+  const buildSourceDetails = ({ isPaired, sensors, overallConfidence }) => {
+    const contributors = [];
+    if (sensors.hasMotion) contributors.push('phone-motion');
+    if (sensors.hasGeo) contributors.push('phone-gps');
+    if (isPaired) contributors.unshift('vitalband-optical-sensors');
+
+    return isPaired
+      ? {
+          mode: 'band_plus_phone',
+          label: 'Band + phone',
+          deviceName: 'VitalBand X1',
+          deviceBattery: wearableRef.current.battery,
+          primarySource: 'VitalBand optical sensors',
+          movementSource: sensors.hasGeo ? 'Band steps with phone GPS correction' : 'Band steps and cadence',
+          recoverySource: 'Band vitals plus activity fusion',
+          contributors,
+          overallConfidence,
+        }
+      : {
+          mode: 'phone_only',
+          label: 'Phone only',
+          deviceName: 'Phone sensors',
+          deviceBattery: null,
+          primarySource: 'Phone motion and routine model',
+          movementSource: sensors.hasGeo || sensors.hasMotion ? 'Phone motion and GPS estimate' : 'Routine estimate fallback',
+          recoverySource: 'Historical trend estimate',
+          contributors: contributors.length ? contributors : ['history-model'],
+          overallConfidence,
+        };
+  };
+
   // Load user on mount
   useEffect(() => {
     const loadUser = async () => {
@@ -250,36 +281,72 @@ export const AuthProvider = ({ children }) => {
       const sensors = sensorRef.current;
       const isPaired = wearableRef.current.paired;
 
-      const heartRate = clamp(Math.round(current.heartRate + rand(-4, 4) + (rand(profile.hr[0], profile.hr[1]) - current.heartRate) * 0.2), 88, 176);
-      const systolic = clamp(Math.round(current.systolic + rand(-3, 3) + (heartRate - 118) * 0.08), 104, 154);
-      const diastolic = clamp(Math.round(current.diastolic + rand(-2, 2) + (heartRate - 118) * 0.04), 66, 100);
-      const spo2 = clamp(Math.round(current.spo2 + rand(-1.1, 1.1)), 92, 100);
-      const temperature = Number(clamp(current.temperature + rand(-0.12, 0.14), 36.0, 38.3).toFixed(1));
-      const cadence = clamp(Math.round(current.cadence + rand(-5, 5) + (rand(profile.cadence[0], profile.cadence[1]) - current.cadence) * 0.3), 128, 192);
+      const freshMotion = Date.now() - sensors.motionSeenAt < 45000;
+      const motionBoost = freshMotion ? sensors.motionScore * 38 : 0;
+      const geoDistance = sensors.distanceSinceLastKm;
+      sensorRef.current.distanceSinceLastKm = 0;
+
+      const phoneBaseSteps = rand(profile.steps[0] * 0.72, profile.steps[1] * 0.84);
+      const bandBaseSteps = rand(profile.steps[0], profile.steps[1]);
+      const stepsValue = Math.round(
+        clamp(
+          (isPaired ? bandBaseSteps : phoneBaseSteps) +
+          motionBoost +
+          geoDistance * (isPaired ? 980 : 1150),
+          isPaired ? 45 : 20,
+          isPaired ? 460 : 340
+        )
+      );
+      const distanceEstimate = Number(
+        clamp(
+          geoDistance > 0
+            ? geoDistance
+            : stepsValue * (isPaired ? 0.00074 : 0.00068) + rand(-0.03, 0.05),
+          0.02,
+          0.9
+        ).toFixed(2)
+      );
+      const activeMinutesValue = stepsValue > 95 || geoDistance > 0.05 || freshMotion ? 1 : 0;
+
+      const exertionScore = clamp(
+        (stepsValue / 4) +
+        (distanceEstimate * 70) +
+        (freshMotion ? 18 : 0) +
+        (mode === 'push' ? 24 : mode === 'balanced' ? 12 : 4),
+        0,
+        100
+      );
+
+      const heartRate = clamp(
+        Math.round(
+          current.heartRate +
+          rand(-3, 3) +
+          (isPaired ? exertionScore * 0.34 : exertionScore * 0.22) +
+          (rand(profile.hr[0], profile.hr[1]) - current.heartRate) * (isPaired ? 0.22 : 0.12)
+        ),
+        72,
+        176
+      );
+      const systolic = clamp(Math.round(current.systolic + rand(-3, 3) + (heartRate - 112) * 0.07), 102, 154);
+      const diastolic = clamp(Math.round(current.diastolic + rand(-2, 2) + (heartRate - 112) * 0.035), 64, 100);
+      const spo2 = clamp(Math.round(current.spo2 + rand(isPaired ? -0.8 : -0.4, isPaired ? 0.8 : 0.4)), 92, 100);
+      const temperature = Number(clamp(current.temperature + rand(isPaired ? -0.12 : -0.06, isPaired ? 0.16 : 0.09), 36.0, 38.3).toFixed(1));
+      const cadence = clamp(Math.round(current.cadence + rand(-5, 5) + (rand(profile.cadence[0], profile.cadence[1]) - current.cadence) * (isPaired ? 0.3 : 0.18)), 118, 192);
       const hydration = clamp(Math.round(current.hydration - (Math.random() > 0.66 ? 1 : 0) + (Math.random() > 0.92 ? 2 : 0)), 38, 100);
       const sleep = clamp(Math.round(current.sleep + rand(-1.4, 0.5)), 55, 97);
       const sleepHours = Number(clamp(current.sleepHours + rand(-0.18, 0.16), 4.3, 9.1).toFixed(1));
       const stressBias = mode === 'push' ? 10 : mode === 'balanced' ? 2 : -7;
       const stress = clamp(Math.round(current.stress + rand(-6, 5) + stressBias), 12, 92);
 
-      const freshMotion = Date.now() - sensors.motionSeenAt < 45000;
-      const motionBoost = freshMotion ? sensors.motionScore * 38 : 0;
-      const geoDistance = sensors.distanceSinceLastKm;
-      sensorRef.current.distanceSinceLastKm = 0;
-
-      const baseSteps = rand(profile.steps[0], profile.steps[1]);
-      const stepsValue = Math.round(clamp(baseSteps + motionBoost + geoDistance * 1150, 35, 420));
-      const distanceEstimate = Number(clamp(geoDistance > 0 ? geoDistance : stepsValue * 0.00072 + rand(-0.03, 0.05), 0.03, 0.9).toFixed(2));
-      const activeMinutesValue = stepsValue > 95 || geoDistance > 0.05 || freshMotion ? 1 : 0;
-
-      const activityConfidenceBase = sensors.hasGeo && sensors.hasMotion ? 88 : sensors.hasGeo || sensors.hasMotion ? 72 : 48;
-      const activityConfidence = clamp(activityConfidenceBase + (isPaired ? 8 : 0), 45, 96);
-      const vitalsConfidence = clamp((sensors.hasMotion ? 56 : 42) + (isPaired ? 28 : 0), 40, 93);
-      const sleepConfidence = clamp(62 + (isPaired ? 12 : 0), 48, 92);
-      const stressConfidence = clamp((sensors.hasMotion ? 58 : 45) + (isPaired ? 20 : 0), 42, 92);
+      const activityConfidenceBase = sensors.hasGeo && sensors.hasMotion ? 80 : sensors.hasGeo || sensors.hasMotion ? 66 : 42;
+      const activityConfidence = clamp(activityConfidenceBase + (isPaired ? 12 : 0), 38, 97);
+      const vitalsConfidence = clamp((isPaired ? 78 : 32) + (sensors.hasMotion ? 8 : 0), 25, 96);
+      const sleepConfidence = clamp((isPaired ? 76 : 52) + (sensors.hasMotion ? 4 : 0), 42, 92);
+      const stressConfidence = clamp((isPaired ? 74 : 44) + (sensors.hasMotion ? 6 : 0), 35, 92);
       const overallConfidence = Math.round(
         (activityConfidence * 0.38 + vitalsConfidence * 0.36 + sleepConfidence * 0.14 + stressConfidence * 0.12)
       );
+      const sourceDetails = buildSourceDetails({ isPaired, sensors, overallConfidence });
 
       trackerRef.current = {
         mode,
@@ -310,6 +377,7 @@ export const AuthProvider = ({ children }) => {
         sleepHours: { value: sleepHours },
         stressLevel: { value: stress },
         source: isPaired ? 'device' : 'estimated',
+        sourceDetails,
         confidence: {
           overall: overallConfidence,
           heartRate: vitalsConfidence,
@@ -325,7 +393,7 @@ export const AuthProvider = ({ children }) => {
           stressLevel: stressConfidence,
         },
         workoutMode: mode,
-        notes: `${isPaired ? 'VitalBand sync' : 'Phone estimate sync'} · ${mode} · conf ${overallConfidence}%`,
+        notes: `${sourceDetails.label} flow · ${mode} · conf ${overallConfidence}%`,
       };
 
       setVerification((prev) => ({
@@ -439,7 +507,7 @@ export const AuthProvider = ({ children }) => {
           battery: wearableBattery,
           lastSyncAt,
           lastSyncStatus,
-          sourceMode: wearablePaired ? 'device' : 'estimated',
+          sourceMode: wearablePaired ? 'band_plus_phone' : 'phone_only',
           sensorStatus,
         },
         verification,

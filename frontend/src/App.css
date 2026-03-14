@@ -2725,6 +2725,29 @@ body {
   line-height: 1.55;
 }
 
+.tracker-flow-summary {
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin-bottom: 14px;
+}
+
+.tracker-flow-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tracker-flow-steps span {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.03);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  text-transform: capitalize;
+}
+
 .tracker-summary-rows,
 .tracker-device-checklist,
 .tracker-diagnostics-list {

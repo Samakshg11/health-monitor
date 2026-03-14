@@ -60,6 +60,20 @@ const healthReadingSchema = new mongoose.Schema(
       enum: ['manual', 'estimated', 'device'],
       default: 'manual',
     },
+    sourceDetails: {
+      mode: {
+        type: String,
+        enum: ['manual_entry', 'phone_only', 'band_plus_phone'],
+        default: 'manual_entry',
+      },
+      label: { type: String },
+      deviceName: { type: String },
+      deviceBattery: { type: Number },
+      primarySource: { type: String },
+      movementSource: { type: String },
+      recoverySource: { type: String },
+      contributors: [{ type: String }],
+    },
     confidence: {
       overall: { type: Number }, // 0-100
       heartRate: { type: Number },

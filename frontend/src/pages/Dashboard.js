@@ -181,6 +181,8 @@ const Dashboard = () => {
   const activeGoalProgress = progress?.activeMinutes ?? 0;
   const hydrationGoalProgress = progress?.hydration ?? 0;
   const recoveryScore = latest?.sleepScore?.value ?? 72;
+  const sourceDetails = latest?.sourceDetails;
+  const sourceMode = sourceDetails?.mode || (latest?.source === 'device' ? 'band_plus_phone' : 'phone_only');
   const readinessScore = Math.max(
     0,
     Math.min(
@@ -223,6 +225,10 @@ const Dashboard = () => {
   ];
 
   const statusTone = toneForStatus(latest?.heartRate?.status);
+  const sourceHeadline = sourceMode === 'band_plus_phone' ? 'Band-connected tracking' : 'Phone-only tracking';
+  const sourceSummary = sourceMode === 'band_plus_phone'
+    ? `${sourceDetails?.primarySource || 'Band sensors'} feed vitals, while ${sourceDetails?.movementSource || 'phone GPS'} helps refine activity.`
+    : `${sourceDetails?.movementSource || 'Phone motion and GPS'} power movement, while vitals are estimated from activity and recent patterns.`;
 
   return (
     <div>
@@ -249,6 +255,7 @@ const Dashboard = () => {
                 {' '}Mode is set to <strong style={{ textTransform: 'capitalize' }}>{currentMode}</strong>.
               </p>
               <div className="tracker-hero-badges">
+                <span className="tracker-pill"><TrackerIcon name="device" size={14} /> {sourceHeadline}</span>
                 <span className="tracker-pill"><TrackerIcon name="heart" size={14} /> {latest?.heartRate?.value ?? '—'} BPM</span>
                 <span className="tracker-pill"><TrackerIcon name="oxygen" size={14} /> {latest?.spo2?.value ?? '—'}% SpO2</span>
                 <span className="tracker-pill"><TrackerIcon name="temperature" size={14} /> {latest?.temperature?.value ?? '—'}°C</span>
@@ -280,6 +287,46 @@ const Dashboard = () => {
               </div>
               <strong>{liveAlerts.length > 0 ? `${liveAlerts.length} live` : 'All clear'}</strong>
               <small>{liveAlerts[0]?.message || 'No recent abnormal readings'}</small>
+            </div>
+          </div>
+        </section>
+
+        <section className="tracker-snapshot-grid">
+          <div className="card tracker-trend-card">
+            <div className="panel-heading">
+              <div>
+                <span className="eyebrow">Tracking flow</span>
+                <h3>{sourceHeadline}</h3>
+              </div>
+            </div>
+            <p className="tracker-flow-summary">{sourceSummary}</p>
+            <div className="tracker-flow-steps">
+              {(sourceDetails?.contributors || ['history-model']).map((item) => (
+                <span key={item}>{item.replace(/-/g, ' ')}</span>
+              ))}
+            </div>
+          </div>
+
+          <div className="card tracker-trend-card">
+            <div className="panel-heading">
+              <div>
+                <span className="eyebrow">Confidence</span>
+                <h3>{latest?.confidence?.overall ?? '—'}% overall</h3>
+              </div>
+            </div>
+            <div className="tracker-summary-rows">
+              <div className="tracker-summary-row">
+                <span><TrackerIcon name="activity" size={16} /> Movement</span>
+                <strong>{latest?.confidence?.steps ?? '—'}%</strong>
+              </div>
+              <div className="tracker-summary-row">
+                <span><TrackerIcon name="heart" size={16} /> Vitals</span>
+                <strong>{latest?.confidence?.heartRate ?? '—'}%</strong>
+              </div>
+              <div className="tracker-summary-row">
+                <span><TrackerIcon name="sleep" size={16} /> Recovery</span>
+                <strong>{latest?.confidence?.sleepScore ?? '—'}%</strong>
+              </div>
             </div>
           </div>
         </section>
