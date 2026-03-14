@@ -1,7 +1,49 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getGoals, updateGoals } from '../utils/api';
 import toast from 'react-hot-toast';
+
+const recommendedGoals = {
+  fitness: {
+    beginner: { steps: 8000, activeMinutes: 45, hydration: 80 },
+    regular: { steps: 10000, activeMinutes: 60, hydration: 85 },
+    advanced: { steps: 12000, activeMinutes: 75, hydration: 90 },
+  },
+  wellness: {
+    beginner: { steps: 7000, activeMinutes: 35, hydration: 85 },
+    regular: { steps: 8500, activeMinutes: 45, hydration: 90 },
+    advanced: { steps: 10000, activeMinutes: 55, hydration: 95 },
+  },
+  recovery: {
+    beginner: { steps: 6000, activeMinutes: 30, hydration: 90 },
+    regular: { steps: 7500, activeMinutes: 40, hydration: 95 },
+    advanced: { steps: 9000, activeMinutes: 50, hydration: 100 },
+  },
+  'clinical-awareness': {
+    beginner: { steps: 6500, activeMinutes: 30, hydration: 85 },
+    regular: { steps: 8000, activeMinutes: 40, hydration: 90 },
+    advanced: { steps: 9500, activeMinutes: 50, hydration: 95 },
+  },
+};
+
+const streakGuidance = {
+  fitness: {
+    title: 'Consistency streak',
+    detail: 'Count a strong day when you hit at least 85% of steps and active minutes. This keeps momentum high without making the streak fragile.',
+  },
+  wellness: {
+    title: 'Habit streak',
+    detail: 'Count a strong day when hydration stays on track and movement is steady. The goal is repeatability, not max effort.',
+  },
+  recovery: {
+    title: 'Recovery streak',
+    detail: 'Count a strong day when hydration stays high and movement stays controlled. Protecting rebuild days matters more than pushing volume.',
+  },
+  'clinical-awareness': {
+    title: 'Observation streak',
+    detail: 'Count a strong day when data arrives consistently and goals stay realistic. Reliability beats intensity for this setup.',
+  },
+};
 
 const Profile = () => {
   const { user, updateProfile } = useAuth();
@@ -89,12 +131,31 @@ const Profile = () => {
   const bmiCategory = bmi
     ? bmi < 18.5 ? 'Underweight' : bmi < 25 ? 'Normal' : bmi < 30 ? 'Overweight' : 'Obese'
     : null;
+  const suggestedGoals = useMemo(() => {
+    const goalGroup = recommendedGoals[onboarding.trackingGoal] || recommendedGoals.fitness;
+    return goalGroup[onboarding.experienceLevel] || goalGroup.beginner;
+  }, [onboarding.trackingGoal, onboarding.experienceLevel]);
+  const streakPlan = streakGuidance[onboarding.trackingGoal] || streakGuidance.fitness;
+  const weeklyTargets = useMemo(() => ({
+    steps: Number(goals.steps || 0) * 7,
+    activeMinutes: Number(goals.activeMinutes || 0) * 7,
+    hydration: Number(goals.hydration || 0),
+  }), [goals]);
+
+  const applyRecommendedGoals = () => {
+    setGoals({
+      steps: suggestedGoals.steps,
+      activeMinutes: suggestedGoals.activeMinutes,
+      hydration: suggestedGoals.hydration,
+    });
+    toast.success('Recommended goals applied');
+  };
 
   return (
     <div>
       <div className="page-header">
         <h1>Profile</h1>
-        <p>Manage your personal info and fitness goals</p>
+        <p>Manage your personal info, goal strategy, and the streak style that fits your setup.</p>
       </div>
       <div className="page-content">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 20 }}>
@@ -199,6 +260,22 @@ const Profile = () => {
 
             <form onSubmit={handleGoalsSubmit} style={{ marginTop: 28 }}>
               <div className="section-title">🎯 Daily Fitness Goals</div>
+              <div className="card" style={{ marginBottom: 18, background: 'rgba(255,255,255,0.02)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.08em', marginBottom: 8 }}>Recommended for your setup</div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem' }}>
+                      {suggestedGoals.steps.toLocaleString()} steps · {suggestedGoals.activeMinutes} min · {suggestedGoals.hydration}% hydration
+                    </div>
+                    <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7, marginTop: 8 }}>
+                      Built for a {onboarding.experienceLevel || 'beginner'} {onboarding.trackingGoal || 'fitness'} setup so the goals feel ambitious without becoming brittle.
+                    </p>
+                  </div>
+                  <button type="button" className="btn btn-secondary btn-sm" style={{ width: 'auto' }} onClick={applyRecommendedGoals}>
+                    Use recommendation
+                  </button>
+                </div>
+              </div>
               <div className="input-group">
                 <div className="input-field">
                   <label>Steps Goal</label>
@@ -229,6 +306,21 @@ const Profile = () => {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="card">
+              <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: 12 }}>Streak plan</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', marginBottom: 8 }}>{streakPlan.title}</div>
+              <div style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', lineHeight: 1.7 }}>
+                {streakPlan.detail}
+              </div>
+            </div>
+            <div className="card">
+              <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: 12 }}>Weekly target view</div>
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.9 }}>
+                <div>{weeklyTargets.steps.toLocaleString()} weekly steps</div>
+                <div>{weeklyTargets.activeMinutes} weekly active minutes</div>
+                <div>{weeklyTargets.hydration}% hydration baseline</div>
+              </div>
+            </div>
             {bmi && (
               <div className="card">
                 <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: 12 }}>BMI Calculator</div>

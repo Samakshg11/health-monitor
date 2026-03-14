@@ -10,8 +10,31 @@ const confidenceTone = (value) => {
   return { label: 'Weak', color: 'var(--accent-red)' };
 };
 
+const deviceLens = {
+  fitness: {
+    title: 'Performance-first device plan',
+    phoneFocus: 'Use phone sensors now for movement volume, sessions, and consistency.',
+    futureFocus: 'A future band would mainly improve readiness, effort tracking, and higher-confidence vitals.',
+  },
+  wellness: {
+    title: 'Steady-habits device plan',
+    phoneFocus: 'Phone tracking is enough to support routines, movement, and broad daily rhythm.',
+    futureFocus: 'A future band would improve passive signals like sleep, stress, and all-day recovery context.',
+  },
+  recovery: {
+    title: 'Recovery-first device plan',
+    phoneFocus: 'Phone mode can show activity and trend direction, but it is weaker for recovery precision.',
+    futureFocus: 'A future band would matter most here by improving sleep quality, overnight strain, and readiness confidence.',
+  },
+  'clinical-awareness': {
+    title: 'Signal-quality device plan',
+    phoneFocus: 'Treat phone-first mode as directional and trend-based rather than diagnostic.',
+    futureFocus: 'A future band would provide stronger body-signal confidence and reduce reliance on estimated vitals.',
+  },
+};
+
 const WearableSetup = () => {
-  const { wearable, pairWearable, unpairWearable, requestSensorPermissions } = useAuth();
+  const { wearable, user, pairWearable, unpairWearable, requestSensorPermissions } = useAuth();
   const [latest, setLatest] = useState(null);
   const [loading, setLoading] = useState(true);
   const [wizardOpen, setWizardOpen] = useState(false);
@@ -87,6 +110,14 @@ const WearableSetup = () => {
   const sourceDetails = latest?.sourceDetails;
   const lastSync = wearable.lastSyncAt ? new Date(wearable.lastSyncAt).toLocaleString() : 'No sync yet';
   const signalStrength = wearable.paired ? (wearable.lastSyncStatus === 'error' ? 1 : latest ? 4 : 3) : 0;
+  const onboarding = user?.onboarding || {};
+  const lens = deviceLens[onboarding.trackingGoal] || deviceLens.fitness;
+  const modeLabel = onboarding.preferredTrackingMode === 'future_band'
+    ? 'Future wearable path'
+    : onboarding.preferredTrackingMode === 'both'
+      ? 'Phone now + wearable later'
+      : 'Phone-first path';
+  const strategyHeadline = wearable.paired ? 'Previewing the future hardware path' : 'Optimizing the free phone-first path';
 
   return (
     <div>
@@ -99,6 +130,27 @@ const WearableSetup = () => {
       </div>
 
       <div className="page-content">
+        <section className="card" style={{ marginBottom: 18 }}>
+          <div className="panel-heading">
+            <div>
+              <span className="eyebrow">Your setup</span>
+              <h3>{lens.title}</h3>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+            <div>
+              <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.08em', marginBottom: 8 }}>Current mode</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem', marginBottom: 8 }}>{modeLabel}</div>
+              <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7 }}>{lens.phoneFocus}</p>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.08em', marginBottom: 8 }}>Why the band matters later</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem', marginBottom: 8 }}>{strategyHeadline}</div>
+              <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7 }}>{lens.futureFocus}</p>
+            </div>
+          </div>
+        </section>
+
         <section className="tracker-device-details" style={{ marginBottom: 18 }}>
           <div className="card">
             <div className="panel-heading">
@@ -111,6 +163,7 @@ const WearableSetup = () => {
               <div className="tracker-diagnostic-row"><span>Movement</span><strong>Phone motion + GPS</strong></div>
               <div className="tracker-diagnostic-row"><span>Vitals</span><strong>Estimated model</strong></div>
               <div className="tracker-diagnostic-row"><span>Confidence</span><strong>Moderate to low</strong></div>
+              <div className="tracker-diagnostic-row"><span>Best use</span><strong>{onboarding.trackingGoal === 'recovery' ? 'Activity context' : onboarding.trackingGoal === 'clinical-awareness' ? 'Trend watching' : 'Daily consistency'}</strong></div>
             </div>
           </div>
           <div className="card">
@@ -124,6 +177,7 @@ const WearableSetup = () => {
               <div className="tracker-diagnostic-row"><span>Movement</span><strong>Band steps + phone correction</strong></div>
               <div className="tracker-diagnostic-row"><span>Vitals</span><strong>Direct wearable-style sensor feed</strong></div>
               <div className="tracker-diagnostic-row"><span>Confidence</span><strong>Higher and more direct</strong></div>
+              <div className="tracker-diagnostic-row"><span>Main upgrade</span><strong>{onboarding.trackingGoal === 'fitness' ? 'Readiness + effort quality' : onboarding.trackingGoal === 'wellness' ? 'Passive recovery context' : onboarding.trackingGoal === 'recovery' ? 'Sleep + strain precision' : 'Stronger signal confidence'}</strong></div>
             </div>
           </div>
         </section>
@@ -208,6 +262,10 @@ const WearableSetup = () => {
               <div className="tracker-check-item">
                 <span>Android path</span>
                 <strong>Health Connect</strong>
+              </div>
+              <div className="tracker-check-item">
+                <span>Best fit</span>
+                <strong>{onboarding.trackingGoal || 'fitness'}</strong>
               </div>
             </div>
           </div>
