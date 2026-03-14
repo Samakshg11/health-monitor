@@ -42,7 +42,13 @@ app.use(
   })
 );
 
-app.use(express.json());
+app.use(
+  express.json({
+    verify: (req, _res, buf) => {
+      req.rawBody = Buffer.from(buf);
+    },
+  })
+);
 
 // ================== SOCKET.IO ==================
 const io = new Server(server, {
@@ -60,11 +66,13 @@ const authRoutes = require("./routes/auth");
 const healthRoutes = require("./routes/health");
 const alertRoutes = require("./routes/alerts");
 const billingRoutes = require("./routes/billing");
+const terraRoutes = require("./routes/terra");
 
 app.use("/api/auth", authRoutes);
 app.use("/api/health", healthRoutes);
 app.use("/api/alerts", alertRoutes);
 app.use("/api/billing", billingRoutes);
+app.use("/api/terra", terraRoutes);
 
 // ================== SERVE FRONTEND ==================
 // CRA outputs to "build" (not "dist")
@@ -110,4 +118,3 @@ mongoose
   .catch((err) =>
     console.error("❌ MongoDB connection failed:", err.message)
   );
-

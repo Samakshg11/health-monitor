@@ -12,6 +12,7 @@ A full-stack MERN application for tracking and monitoring personal health vitals
 - **📋 History** — Full reading history with delete & pagination
 - **🔐 Auth** — JWT-based login/register with protected routes
 - **👤 Profile** — Personal health info + BMI calculator
+- **⌚ Terra Integration Ready** — Backend scaffolding for Terra widget sessions, provider connections, and Terra webhook ingestion
 
 ## 🛠 Tech Stack
 
@@ -98,6 +99,11 @@ MONGO_URI=mongodb://localhost:27017/healthmonitor
 JWT_SECRET=your_super_secret_key_here
 JWT_EXPIRE=7d
 CLIENT_URL=http://localhost:3000
+TERRA_DEV_ID=your_terra_dev_id
+TERRA_API_KEY=your_terra_api_key
+TERRA_WEBHOOK_SECRET=your_terra_webhook_secret
+TERRA_SUCCESS_REDIRECT_URL=http://localhost:3000/wearable
+TERRA_FAILURE_REDIRECT_URL=http://localhost:3000/wearable
 ```
 
 For MongoDB Atlas:
@@ -132,6 +138,13 @@ GET    /api/health/readings     Get history (pagination)
 GET    /api/health/latest       Get most recent reading
 GET    /api/health/stats        Get aggregated stats (?days=7)
 DELETE /api/health/reading/:id  Delete a reading
+```
+
+### Terra
+```
+POST   /api/terra/widget-session  Create Terra widget session
+GET    /api/terra/connections     Get stored Terra provider connections
+POST   /api/terra/webhook         Receive Terra auth/data webhooks
 ```
 
 ### Alerts

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { getLatestReading } from '../utils/api';
+import { createTerraWidgetSession, getLatestReading, getTerraConnections } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { ProgressRing, SignalBars, TrackerIcon } from '../components/TrackerUI';
 
@@ -18,6 +18,8 @@ const WearableSetup = () => {
   const [wizardStep, setWizardStep] = useState(1);
   const [scanStatus, setScanStatus] = useState('idle');
   const [calibrationProgress, setCalibrationProgress] = useState(0);
+  const [terraConnections, setTerraConnections] = useState([]);
+  const [terraLoading, setTerraLoading] = useState(false);
 
   const loadLatest = async () => {
     try {
@@ -27,8 +29,16 @@ const WearableSetup = () => {
     setLoading(false);
   };
 
+  const loadTerraConnections = async () => {
+    try {
+      const { data } = await getTerraConnections();
+      setTerraConnections(data.connections || []);
+    } catch {}
+  };
+
   useEffect(() => {
     loadLatest();
+    loadTerraConnections();
     const id = setInterval(loadLatest, 20000);
     return () => clearInterval(id);
   }, []);
@@ -50,6 +60,20 @@ const WearableSetup = () => {
   const onPermissions = async () => {
     await requestSensorPermissions();
     toast.success('Permission check completed');
+  };
+
+  const connectTerra = async () => {
+    setTerraLoading(true);
+    try {
+      const { data } = await createTerraWidgetSession({});
+      const url = data?.session?.url || data?.session?.widget_url || data?.session?.widgetUrl;
+      if (!url) throw new Error('Terra session URL missing');
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || err.message || 'Unable to start Terra connection');
+    } finally {
+      setTerraLoading(false);
+    }
   };
 
   const onUnpair = () => {
@@ -184,6 +208,9 @@ const WearableSetup = () => {
               <button type="button" className="btn btn-secondary btn-sm" style={{ width: 'auto' }} onClick={onPermissions}>
                 Check permissions
               </button>
+              <button type="button" className="btn btn-secondary btn-sm" style={{ width: 'auto' }} onClick={connectTerra} disabled={terraLoading}>
+                {terraLoading ? 'Opening Terra...' : 'Connect via Terra'}
+              </button>
               {wearable.paired ? (
                 <button type="button" className="btn btn-secondary btn-sm" style={{ width: 'auto' }} onClick={onUnpair}>
                   Disconnect band
@@ -211,6 +238,10 @@ const WearableSetup = () => {
               <div className="tracker-check-item">
                 <span>Live feed</span>
                 <strong>{wearable.sensorStatus.hasGeo || wearable.sensorStatus.hasMotion ? 'Streaming' : 'Idle'}</strong>
+              </div>
+              <div className="tracker-check-item">
+                <span>Terra providers</span>
+                <strong>{terraConnections.length}</strong>
               </div>
             </div>
           </div>
@@ -245,6 +276,33 @@ const WearableSetup = () => {
                 </div>
               )}
           </div>
+        </section>
+
+        <section className="card" style={{ marginTop: 18 }}>
+          <div className="panel-heading">
+            <div>
+              <span className="eyebrow">Terra</span>
+              <h3>Connected providers</h3>
+            </div>
+          </div>
+          {terraConnections.length === 0 ? (
+            <p style={{ color: 'var(--text-secondary)' }}>
+              No Terra-connected provider yet. When connected, Terra can bring Apple Health, Google Fit, Fitbit, Garmin,
+              Oura, and other normalized wearable feeds into this project.
+            </p>
+          ) : (
+            <div className="tracker-diagnostics-list">
+              {terraConnections.map((connection) => (
+                <div key={`${connection.terraUserId}-${connection.provider}`} className="tracker-diagnostic-row">
+                  <span>{connection.provider || 'Provider'}</span>
+                  <div>
+                    <strong>{connection.status}</strong>
+                    <small>{connection.lastWebhookUpdate ? new Date(connection.lastWebhookUpdate).toLocaleString() : 'Awaiting webhook'}</small>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         <section className="card">
