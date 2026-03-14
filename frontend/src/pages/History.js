@@ -88,6 +88,25 @@ const sourceBadge = (reading) => {
   return 'Phone sync';
 };
 
+const summarizeMovementByDay = (items, key) => {
+  const grouped = items.reduce((acc, reading) => {
+    const dayKey = format(new Date(reading.recordedAt), 'yyyy-MM-dd');
+    if (!acc[dayKey]) acc[dayKey] = { cumulativeMax: 0, manualSum: 0 };
+    const value = Number(reading?.[key]?.value || 0);
+    if (!value) return acc;
+
+    if (['estimated', 'device', 'health_connect'].includes(reading.source)) {
+      acc[dayKey].cumulativeMax = Math.max(acc[dayKey].cumulativeMax, value);
+    } else {
+      acc[dayKey].manualSum += value;
+    }
+
+    return acc;
+  }, {});
+
+  return Object.values(grouped).map(({ cumulativeMax, manualSum }) => cumulativeMax + manualSum);
+};
+
 const History = () => {
   const { user } = useAuth();
   const [readings, setReadings] = useState([]);
@@ -134,8 +153,8 @@ const History = () => {
 
   const overview = useMemo(() => {
     if (!readings.length) return null;
-    const steps = readings.reduce((sum, reading) => sum + (reading.steps?.value || 0), 0);
-    const activeSessions = readings.filter((reading) => (reading.steps?.value || 0) > 120).length;
+    const steps = summarizeMovementByDay(readings, 'steps').reduce((sum, value) => sum + value, 0);
+    const activeSessions = summarizeMovementByDay(readings, 'activeMinutes').filter((value) => value >= 20).length;
     const elevatedReadings = readings.filter((reading) => (
       ['warning', 'critical'].includes(reading.heartRate?.status) ||
       ['warning', 'critical'].includes(reading.spo2?.status) ||

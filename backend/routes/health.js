@@ -10,6 +10,7 @@ const {
   normalizeIncomingReading,
 } = require('../utils/healthPipeline');
 const { mapHealthConnectPayload } = require('../utils/healthConnectAdapter');
+const { summarizeMovementMetric } = require('../utils/movementAggregation');
 
 const router = express.Router();
 
@@ -291,15 +292,14 @@ router.get('/stats', protect, async (req, res) => {
     const hrVals = readings.filter((r) => r.heartRate?.value).map((r) => r.heartRate.value);
     const spo2Vals = readings.filter((r) => r.spo2?.value).map((r) => r.spo2.value);
     const tempVals = readings.filter((r) => r.temperature?.value).map((r) => r.temperature.value);
-    const stepsVals = readings.filter((r) => r.steps?.value).map((r) => r.steps.value);
-    const caloriesVals = readings.filter((r) => r.calories?.value).map((r) => r.calories.value);
-    const distanceVals = readings.filter((r) => r.distance?.value).map((r) => r.distance.value);
-    const activeMinutesVals = readings.filter((r) => r.activeMinutes?.value).map((r) => r.activeMinutes.value);
+    const stepsSummary = summarizeMovementMetric(readings, 'steps');
+    const caloriesSummary = summarizeMovementMetric(readings, 'calories');
+    const distanceSummary = summarizeMovementMetric(readings, 'distance', { precision: 2 });
+    const activeMinutesSummary = summarizeMovementMetric(readings, 'activeMinutes');
 
     const avg = (arr) => (arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1) : null);
     const max = (arr) => (arr.length ? Math.max(...arr) : null);
     const min = (arr) => (arr.length ? Math.min(...arr) : null);
-    const sum = (arr) => (arr.length ? arr.reduce((a, b) => a + b, 0) : 0);
 
     const stats = {
       heartRate: { avg: avg(hrVals), max: max(hrVals), min: min(hrVals), count: hrVals.length },
@@ -311,24 +311,24 @@ router.get('/stats', protect, async (req, res) => {
         count: tempVals.length,
       },
       steps: {
-        total: sum(stepsVals),
-        avg: avg(stepsVals),
-        max: max(stepsVals),
+        total: stepsSummary.total,
+        avg: stepsSummary.avg,
+        max: stepsSummary.max,
       },
       calories: {
-        total: sum(caloriesVals),
-        avg: avg(caloriesVals),
-        max: max(caloriesVals),
+        total: caloriesSummary.total,
+        avg: caloriesSummary.avg,
+        max: caloriesSummary.max,
       },
       distance: {
-        total: Number(sum(distanceVals).toFixed(2)),
-        avg: avg(distanceVals),
-        max: max(distanceVals),
+        total: distanceSummary.total,
+        avg: distanceSummary.avg,
+        max: distanceSummary.max,
       },
       activeMinutes: {
-        total: sum(activeMinutesVals),
-        avg: avg(activeMinutesVals),
-        max: max(activeMinutesVals),
+        total: activeMinutesSummary.total,
+        avg: activeMinutesSummary.avg,
+        max: activeMinutesSummary.max,
       },
       totalReadings: readings.length,
     };
@@ -371,10 +371,10 @@ router.get('/fitness/today', protect, async (req, res) => {
     const sum = (arr) => arr.reduce((a, b) => a + b, 0);
     const avg = (arr) => (arr.length ? Number((sum(arr) / arr.length).toFixed(1)) : null);
 
-    const steps = readings.map((r) => r.steps?.value || 0);
-    const calories = readings.map((r) => r.calories?.value || 0);
-    const distance = readings.map((r) => r.distance?.value || 0);
-    const activeMinutes = readings.map((r) => r.activeMinutes?.value || 0);
+    const stepsSummary = summarizeMovementMetric(readings, 'steps');
+    const caloriesSummary = summarizeMovementMetric(readings, 'calories');
+    const distanceSummary = summarizeMovementMetric(readings, 'distance', { precision: 2 });
+    const activeMinutesSummary = summarizeMovementMetric(readings, 'activeMinutes');
     const heartRate = readings.filter((r) => r.heartRate?.value).map((r) => r.heartRate.value);
     const cadence = readings.filter((r) => r.cadence?.value).map((r) => r.cadence.value);
 
@@ -385,10 +385,10 @@ router.get('/fitness/today', protect, async (req, res) => {
     };
 
     const totals = {
-      steps: sum(steps),
-      calories: sum(calories),
-      distance: Number(sum(distance).toFixed(2)),
-      activeMinutes: sum(activeMinutes),
+      steps: stepsSummary.total,
+      calories: caloriesSummary.total,
+      distance: distanceSummary.total,
+      activeMinutes: activeMinutesSummary.total,
     };
 
     const progress = {

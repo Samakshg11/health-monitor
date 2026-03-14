@@ -21,6 +21,9 @@ const haversineKm = (a, b) => {
 };
 
 const round1 = (value) => Number(value.toFixed(1));
+const getLocalDayKey = (date = new Date()) => (
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+);
 
 const goalProfiles = {
   fitness: {
@@ -111,6 +114,13 @@ export const AuthProvider = ({ children }) => {
     sleep: 84,
     sleepHours: 7.2,
     stress: 34,
+  });
+  const dailyMovementRef = useRef({
+    dayKey: getLocalDayKey(),
+    steps: 0,
+    calories: 0,
+    distance: 0,
+    activeMinutes: 0,
   });
 
   const syncWearableState = (next) => {
@@ -240,6 +250,20 @@ export const AuthProvider = ({ children }) => {
         };
   };
 
+  const getDailyMovementState = (now) => {
+    const dayKey = getLocalDayKey(now);
+    if (dailyMovementRef.current.dayKey !== dayKey) {
+      dailyMovementRef.current = {
+        dayKey,
+        steps: 0,
+        calories: 0,
+        distance: 0,
+        activeMinutes: 0,
+      };
+    }
+    return dailyMovementRef.current;
+  };
+
   // Load user on mount
   useEffect(() => {
     const loadUser = async () => {
@@ -337,6 +361,7 @@ export const AuthProvider = ({ children }) => {
       const current = trackerRef.current;
       const sensors = sensorRef.current;
       const isPaired = wearableRef.current.paired;
+      const dailyMovement = getDailyMovementState(now);
 
       const freshMotion = Date.now() - sensors.motionSeenAt < 45000;
       const motionBoost = freshMotion ? sensors.motionScore * 38 : 0;
@@ -346,7 +371,7 @@ export const AuthProvider = ({ children }) => {
 
       const phoneBaseSteps = rand(profile.steps[0] * 0.72, profile.steps[1] * 0.84);
       const bandBaseSteps = rand(profile.steps[0], profile.steps[1]);
-      const stepsValue = Math.round(
+      const stepDelta = Math.round(
         clamp(
           (isPaired ? bandBaseSteps : phoneBaseSteps) +
           motionBoost +
@@ -355,20 +380,26 @@ export const AuthProvider = ({ children }) => {
           isPaired ? 460 : 340
         )
       );
-      const distanceEstimate = Number(
+      const distanceDelta = Number(
         clamp(
           geoDistance > 0
             ? geoDistance
-            : stepsValue * (isPaired ? 0.00074 : 0.00068) + rand(-0.03, 0.05),
+            : stepDelta * (isPaired ? 0.00074 : 0.00068) + rand(-0.03, 0.05),
           0.02,
           0.9
         ).toFixed(2)
       );
-      const activeMinutesValue = stepsValue > 95 || geoDistance > 0.05 || freshMotion ? 1 : 0;
+      const activeMinuteDelta = stepDelta > 95 || geoDistance > 0.05 || freshMotion ? 1 : 0;
+      const calorieDelta = Math.round(clamp((stepDelta * 0.045) + (activeMinuteDelta * 4) + rand(8, 18), 10, 58));
+
+      dailyMovement.steps = Math.round(clamp(dailyMovement.steps + stepDelta, 0, isPaired ? 42000 : 28000));
+      dailyMovement.distance = Number(clamp(dailyMovement.distance + distanceDelta, 0, isPaired ? 32 : 22).toFixed(2));
+      dailyMovement.activeMinutes = Math.round(clamp(dailyMovement.activeMinutes + activeMinuteDelta, 0, isPaired ? 240 : 180));
+      dailyMovement.calories = Math.round(clamp(dailyMovement.calories + calorieDelta, 0, isPaired ? 4200 : 3200));
 
       const exertionScore = clamp(
-        (stepsValue / 4) +
-        (distanceEstimate * 70) +
+        (stepDelta / 4) +
+        (distanceDelta * 70) +
         (freshMotion ? 18 : 0) +
         (mode === 'push' ? 24 : mode === 'balanced' ? 12 : 4),
         0,
@@ -379,7 +410,7 @@ export const AuthProvider = ({ children }) => {
         (freshMotion ? 1 : 0) * 36 +
         (sensors.hasGeo ? 24 : 0) +
         clamp(geoDistance * 400, 0, 30) +
-        clamp(stepsValue / 8, 0, 18),
+        clamp(stepDelta / 8, 0, 18),
         10,
         100
       );
@@ -481,11 +512,6 @@ export const AuthProvider = ({ children }) => {
       };
 
       const payload = {
-        steps: { value: stepsValue },
-        calories: { value: Math.round(clamp((stepsValue * 0.045) + (activeMinutesValue * 4) + rand(8, 18), 10, 58)) },
-        distance: { value: distanceEstimate },
-        cadence: { value: cadence },
-        activeMinutes: { value: activeMinutesValue },
         hydration: { value: hydration },
         sleepScore: { value: sleep },
         sleepHours: { value: sleepHours },
@@ -509,6 +535,12 @@ export const AuthProvider = ({ children }) => {
         workoutMode: mode,
         notes: `${sourceDetails.label} flow · ${mode} · conf ${overallConfidence}% · ${confidenceTier} confidence`,
       };
+
+      payload.steps = { value: dailyMovement.steps };
+      payload.calories = { value: dailyMovement.calories };
+      payload.distance = { value: dailyMovement.distance };
+      payload.cadence = { value: cadence };
+      payload.activeMinutes = { value: dailyMovement.activeMinutes };
 
       if (!phoneOnly) {
         payload.heartRate = { value: finalHeartRate };
