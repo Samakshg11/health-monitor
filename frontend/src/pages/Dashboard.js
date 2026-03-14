@@ -186,6 +186,14 @@ const hasDirectBodySignals = (reading) => Boolean(
   reading?.stressLevel?.value
 );
 
+const hasMovementSignals = (reading) => Boolean(
+  reading?.steps?.value !== undefined ||
+  reading?.distance?.value !== undefined ||
+  reading?.activeMinutes?.value !== undefined ||
+  reading?.calories?.value !== undefined ||
+  reading?.cadence?.value !== undefined
+);
+
 const buildCompositeBodyReading = (readings = []) => {
   const ordered = readings.filter(Boolean);
   const baseReading = ordered.find(hasDirectBodySignals);
@@ -286,6 +294,10 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const bodyReading = useMemo(
     () => buildCompositeBodyReading([latest, ...recentReadings]),
+    [latest, recentReadings]
+  );
+  const movementReading = useMemo(
+    () => [latest, ...recentReadings].find(hasMovementSignals) || null,
     [latest, recentReadings]
   );
 
@@ -422,6 +434,8 @@ const Dashboard = () => {
   const bodyConfidenceTier = bodySourceDetails?.confidenceTier || (bodyReading?.confidence?.overall >= 78 ? 'high' : bodyReading?.confidence?.overall >= 56 ? 'medium' : 'low');
   const supportedMetrics = sourceDetails?.supportedMetrics || {};
   const bodySupportedMetrics = bodySourceDetails?.supportedMetrics || {};
+  const movementSupportedMetrics = movementReading?.sourceDetails?.supportedMetrics || {};
+  const movementConfidence = movementReading?.confidence?.steps ?? movementReading?.confidence?.distance ?? movementReading?.confidence?.activeMinutes ?? movementReading?.confidence?.overall;
   const sourceStrengthSummary = [
     `Movement ${supportedMetrics.movement || 'stronger'}`,
     `Vitals ${supportedMetrics.vitals || 'estimated'}`,
@@ -642,7 +656,7 @@ const Dashboard = () => {
             <div className="tracker-summary-rows">
               <div className="tracker-summary-row">
                 <span><TrackerIcon name="activity" size={16} /> Movement</span>
-                <strong>{latest?.confidence?.steps ?? '—'}% · {supportedMetrics.movement || 'stronger'}</strong>
+                <strong>{movementConfidence ?? '—'}% · {movementSupportedMetrics.movement || supportedMetrics.movement || 'stronger'}</strong>
               </div>
               <div className="tracker-summary-row">
                 <span><TrackerIcon name="heart" size={16} /> Vitals</span>
