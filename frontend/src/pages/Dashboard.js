@@ -23,15 +23,18 @@ const toneForStatus = (status) => {
   return { label: 'Stable', color: 'var(--accent-green)' };
 };
 
-const metricCards = (latest) => {
-  if (!latest) return [];
+const metricCards = (latest, fallbackReading = null) => {
+  if (!latest && !fallbackReading) return [];
 
-  const heartRate = latest.heartRate;
-  const spo2 = latest.spo2;
-  const temp = latest.temperature;
-  const stress = latest.stressLevel;
-  const bloodPressure = latest.bloodPressure;
-  const sleepHours = latest.sleepHours;
+  const primary = latest || fallbackReading;
+  const fallback = fallbackReading || latest || {};
+  const heartRate = primary?.heartRate || fallback?.heartRate;
+  const spo2 = primary?.spo2 || fallback?.spo2;
+  const temp = primary?.temperature || fallback?.temperature;
+  const stress = primary?.stressLevel || fallback?.stressLevel;
+  const bloodPressure = primary?.bloodPressure || fallback?.bloodPressure;
+  const sleepHours = primary?.sleepHours || fallback?.sleepHours;
+  const sleepScore = primary?.sleepScore || fallback?.sleepScore;
 
   return [
     {
@@ -72,7 +75,7 @@ const metricCards = (latest) => {
       unit: '%',
       trend: toneForStatus(stress?.status).label,
       status: stress?.status,
-      confidence: latest.confidence?.stressLevel,
+      confidence: primary?.confidence?.stressLevel ?? fallback?.confidence?.stressLevel,
     },
     {
       key: 'bp',
@@ -87,12 +90,12 @@ const metricCards = (latest) => {
     {
       key: 'sleep',
       icon: 'sleep',
-      label: 'Sleep duration',
-      value: sleepHours?.value ?? '—',
-      unit: 'hrs',
-      trend: 'Last night',
-      status: 'normal',
-      confidence: latest.confidence?.sleepHours,
+      label: sleepHours?.value !== undefined ? 'Sleep duration' : 'Sleep quality',
+      value: sleepHours?.value ?? sleepScore?.value ?? '—',
+      unit: sleepHours?.value !== undefined ? 'hrs' : '%',
+      trend: sleepHours?.value !== undefined ? 'Last night' : 'Recovery',
+      status: sleepScore?.status || 'normal',
+      confidence: primary?.confidence?.sleepHours ?? primary?.confidence?.sleepScore ?? fallback?.confidence?.sleepHours ?? fallback?.confidence?.sleepScore,
     },
   ];
 };
@@ -267,7 +270,7 @@ const Dashboard = () => {
   const stepGoalProgress = progress?.steps ?? 0;
   const activeGoalProgress = progress?.activeMinutes ?? 0;
   const hydrationGoalProgress = progress?.hydration ?? 0;
-  const recoveryScore = bodyReading?.sleepScore?.value ?? 72;
+  const recoveryScore = bodyReading?.sleepScore?.value ?? latest?.sleepScore?.value ?? 72;
   const sourceDetails = latest?.sourceDetails;
   const sourceMode = sourceDetails?.mode || (latest?.source === 'device' ? 'band_plus_phone' : latest?.source === 'health_connect' ? 'health_connect' : 'phone_only');
   const bodySourceDetails = bodyReading?.sourceDetails;
@@ -469,7 +472,7 @@ const Dashboard = () => {
               <span className="eyebrow">Readiness</span>
               <h2>{readinessScore >= 75 ? 'Ready to push' : readinessScore >= 55 ? 'Solid training day' : 'Take a lighter approach'}</h2>
               <p>
-                Recovery is {recoveryScore}% and your current load is {bodyReading?.stressLevel?.value ?? '—'}%.
+                Recovery is {recoveryScore}% and your current load is {bodyReading?.stressLevel?.value ?? latest?.stressLevel?.value ?? '—'}%.
                 {' '}Mode is set to <strong style={{ textTransform: 'capitalize' }}>{currentMode}</strong>.
               </p>
               <div className="tracker-hero-badges">
@@ -481,9 +484,9 @@ const Dashboard = () => {
                   </Link>
                 ) : (
                   <>
-                    <span className="tracker-pill"><TrackerIcon name="heart" size={14} /> {bodyReading?.heartRate?.value ?? '—'} BPM</span>
-                    <span className="tracker-pill"><TrackerIcon name="oxygen" size={14} /> {bodyReading?.spo2?.value ?? '—'}% SpO2</span>
-                    <span className="tracker-pill"><TrackerIcon name="temperature" size={14} /> {bodyReading?.temperature?.value ?? '—'}°C</span>
+                    <span className="tracker-pill"><TrackerIcon name="heart" size={14} /> {bodyReading?.heartRate?.value ?? latest?.heartRate?.value ?? '—'} BPM</span>
+                    <span className="tracker-pill"><TrackerIcon name="oxygen" size={14} /> {bodyReading?.spo2?.value ?? latest?.spo2?.value ?? '—'}% SpO2</span>
+                    <span className="tracker-pill"><TrackerIcon name="temperature" size={14} /> {bodyReading?.temperature?.value ?? latest?.temperature?.value ?? '—'}°C</span>
                   </>
                 )}
               </div>
@@ -554,11 +557,11 @@ const Dashboard = () => {
               </div>
               <div className="tracker-summary-row">
                 <span><TrackerIcon name="heart" size={16} /> Vitals</span>
-                <strong>{bodyReading?.confidence?.heartRate ?? bodyReading?.confidence?.overall ?? '—'}% · {bodySupportedMetrics.vitals || 'estimated'}</strong>
+                <strong>{bodyReading?.confidence?.heartRate ?? bodyReading?.confidence?.overall ?? latest?.confidence?.heartRate ?? latest?.confidence?.overall ?? '—'}% · {bodySupportedMetrics.vitals || 'estimated'}</strong>
               </div>
               <div className="tracker-summary-row">
                 <span><TrackerIcon name="sleep" size={16} /> Recovery</span>
-                <strong>{bodyReading?.confidence?.sleepScore ?? bodyReading?.confidence?.overall ?? '—'}% · {bodySupportedMetrics.recovery || 'trend-based'}</strong>
+                <strong>{bodyReading?.confidence?.sleepScore ?? bodyReading?.confidence?.sleepHours ?? bodyReading?.confidence?.stressLevel ?? bodyReading?.confidence?.overall ?? latest?.confidence?.sleepScore ?? latest?.confidence?.stressLevel ?? latest?.confidence?.overall ?? '—'}% · {bodySupportedMetrics.recovery || 'trend-based'}</strong>
               </div>
             </div>
           </div>
@@ -671,11 +674,11 @@ const Dashboard = () => {
               </div>
               <div className="tracker-summary-row">
                 <span><TrackerIcon name="sleep" size={16} /> Sleep</span>
-                <strong>{bodyReading?.sleepHours?.value || '—'} hrs</strong>
+                <strong>{bodyReading?.sleepHours?.value ?? latest?.sleepHours?.value ?? bodyReading?.sleepScore?.value ?? latest?.sleepScore?.value ?? '—'} {bodyReading?.sleepHours?.value !== undefined || latest?.sleepHours?.value !== undefined ? 'hrs' : '%'}</strong>
               </div>
               <div className="tracker-summary-row">
                 <span><TrackerIcon name="stress" size={16} /> Stress</span>
-                <strong>{bodyReading?.stressLevel?.value || '—'}%</strong>
+                <strong>{bodyReading?.stressLevel?.value ?? latest?.stressLevel?.value ?? '—'}%</strong>
               </div>
             </div>
           </div>
@@ -713,7 +716,7 @@ const Dashboard = () => {
             </div>
           </div>
           <div className="tracker-vitals-grid">
-            {metricCards(bodyReading).map((metric) => {
+            {metricCards(bodyReading, latest).map((metric) => {
               const rendered = getMetricPresentation({
                 metricKey: metric.key === 'heart-rate' ? 'heart' : metric.key,
                 metric,

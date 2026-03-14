@@ -202,6 +202,20 @@ const LogReading = () => {
       },
       contributors: ['manual-check-in', checkInMode.replace('_', '-')],
     };
+    payload.confidence = {
+      overall: 96,
+      heartRate: payload.heartRate ? 98 : undefined,
+      bloodPressure: payload.bloodPressure ? 98 : undefined,
+      spo2: payload.spo2 ? 98 : undefined,
+      temperature: payload.temperature ? 97 : undefined,
+      steps: payload.steps ? 92 : undefined,
+      distance: payload.distance ? 92 : undefined,
+      activeMinutes: payload.activeMinutes ? 92 : undefined,
+      hydration: payload.hydration ? 96 : undefined,
+      sleepScore: payload.sleepScore ? 96 : undefined,
+      sleepHours: payload.sleepHours ? 96 : undefined,
+      stressLevel: payload.stressLevel ? 95 : undefined,
+    };
     payload.notes = form.notes ? `Manual check-in · ${modeConfig.title} · ${form.notes}` : `Manual check-in · ${modeConfig.title}`;
     return payload;
   };
