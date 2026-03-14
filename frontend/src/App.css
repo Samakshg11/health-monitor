@@ -3050,11 +3050,6 @@ body {
   margin-bottom: 14px;
 }
 
-.tracker-audit-panel {
-  display: grid;
-  gap: 14px;
-}
-
 .tracker-compare-table {
   display: grid;
   gap: 10px;

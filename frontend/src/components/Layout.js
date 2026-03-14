@@ -32,7 +32,6 @@ const Layout = ({ children }) => {
     { to: '/reports', icon: 'trends', label: 'Trends', hint: 'Weekly patterns' },
     { to: '/insights', icon: 'recovery', label: 'Recovery', hint: 'Coaching and insights' },
     { to: '/wearable', icon: 'device', label: 'Device', hint: 'Band and sync status' },
-    { to: '/verification', icon: 'verify', label: 'Verify', hint: 'Audit the pipeline' },
     { to: '/alerts', icon: 'alerts', label: 'Alerts', hint: 'Important changes', badge: unreadCount },
     { to: '/profile', icon: 'profile', label: 'You', hint: 'Goals and profile' },
   ];

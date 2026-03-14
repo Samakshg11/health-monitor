@@ -107,7 +107,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const { latestReading: socketReading, liveAlerts, lastSocketEvent } = useSocket();
+  const { latestReading: socketReading, liveAlerts } = useSocket();
   const [latest, setLatest] = useState(null);
   const [chartData, setChartData] = useState([]);
   const [fitnessSummary, setFitnessSummary] = useState(null);
@@ -223,10 +223,6 @@ const Dashboard = () => {
   ];
 
   const statusTone = toneForStatus(latest?.heartRate?.status);
-  const sourceLabel = latest?.source || 'estimated';
-  const verificationLabel = lastSocketEvent?.receivedAt
-    ? `Socket ${formatDistanceToNow(new Date(lastSocketEvent.receivedAt), { addSuffix: true })}`
-    : 'No socket event yet';
 
   return (
     <div>
@@ -393,30 +389,6 @@ const Dashboard = () => {
                 <p>{metric.label}</p>
               </article>
             ))}
-          </div>
-        </section>
-
-        <section className="card tracker-audit-panel">
-          <div className="panel-heading">
-            <div>
-              <span className="eyebrow">Audit</span>
-              <h3>How this data is being shown</h3>
-            </div>
-            <Link to="/verification">Open verification</Link>
-          </div>
-          <div className="tracker-summary-rows">
-            <div className="tracker-summary-row">
-              <span><TrackerIcon name="device" size={16} /> Data source</span>
-              <strong style={{ textTransform: 'capitalize' }}>{sourceLabel}</strong>
-            </div>
-            <div className="tracker-summary-row">
-              <span><TrackerIcon name="sync" size={16} /> Backend storage</span>
-              <strong>{billingSummary ? 'API connected' : 'Waiting'}</strong>
-            </div>
-            <div className="tracker-summary-row">
-              <span><TrackerIcon name="verify" size={16} /> Live verification</span>
-              <strong>{verificationLabel}</strong>
-            </div>
           </div>
         </section>
 
