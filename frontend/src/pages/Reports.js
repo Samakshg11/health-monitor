@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getStats } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import { TrackerIcon } from '../components/TrackerUI';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
@@ -11,12 +12,12 @@ import { downloadCsv } from '../utils/export';
 const reportLens = {
   fitness: {
     title: 'Performance summary',
-    detail: 'Use reports to judge momentum through steps, calories, active minutes, and whether effort is staying repeatable.',
+    detail: 'Use trends to judge momentum through steps, calories, active minutes, and whether effort is staying repeatable.',
     primaryStatLabels: ['Avg BPM', 'Total Steps', 'Total Calories', 'Active Mins'],
   },
   wellness: {
     title: 'Habit consistency summary',
-    detail: 'Read this report as a weekly check on steady routines, balanced output, and whether health patterns are staying sustainable.',
+    detail: 'Read this view as a weekly check on steady routines, balanced output, and whether health patterns are staying sustainable.',
     primaryStatLabels: ['Avg BPM', 'Distance (km)', 'Active Mins', 'Readings'],
   },
   recovery: {
@@ -60,25 +61,29 @@ const Reports = () => {
         });
         setChartData(readings.map((r) => ({
           time: format(new Date(r.recordedAt), 'MM/dd'),
-          heartRate: r.heartRate && r.heartRate.value,
-          spo2: r.spo2 && r.spo2.value,
-          temperature: r.temperature && r.temperature.value,
-          steps: r.steps && r.steps.value,
-          calories: r.calories && r.calories.value,
-          distance: r.distance && r.distance.value,
-          activeMinutes: r.activeMinutes && r.activeMinutes.value,
+          heartRate: r.heartRate?.value,
+          spo2: r.spo2?.value,
+          temperature: r.temperature?.value,
+          steps: r.steps?.value,
+          calories: r.calories?.value,
+          distance: r.distance?.value,
+          activeMinutes: r.activeMinutes?.value,
         })));
-      } catch (e) {}
-      setLoading(false);
+      } catch {
+        setStats(null);
+        setChartData([]);
+      } finally {
+        setLoading(false);
+      }
     };
     load();
   }, [days]);
 
   const StatBox = ({ label, value, sub }) => (
-    <div className="stat-card">
+    <div className="stat-card reports-stat-card">
       <div className="stat-value">{value ?? '—'}</div>
       <div className="stat-label">{label}</div>
-      {sub && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4 }}>{sub}</div>}
+      {sub && <div className="reports-stat-sub">{sub}</div>}
     </div>
   );
 
@@ -109,16 +114,26 @@ const Reports = () => {
       ? 'Treat repeated changes as stronger than isolated outliers.'
       : onboarding.trackingGoal === 'wellness'
         ? 'Consistency matters more than chasing a perfect day.'
-        : 'Use these reports to protect consistency and training momentum.';
+        : 'Use these trends to protect consistency and training momentum.';
+  const connectedSources = sourceMix.manual + sourceMix.healthConnect + sourceMix.preview;
+  const primarySourceLabel = sourceMix.healthConnect > 0
+    ? 'Health Connect-led'
+    : sourceMix.preview > 0
+      ? 'Preview-band mix'
+      : sourceMix.manual > 0
+        ? 'Phone + check-ins'
+        : 'Phone-first only';
 
   return (
     <div>
-      <div className="page-header">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <h1>Health Reports</h1>
-            <p>Setup-aware trends shaped by your goal, tracking mode, and source confidence.</p>
-          </div>
+      <div className="page-header tracker-header">
+        <div>
+          <span className="eyebrow">Trends</span>
+          <h1>Source-aware trends</h1>
+          <p>Cleaner weekly patterns for movement, vitals, and recovery without mixing every source into one fake device feed.</p>
+        </div>
+        <div className="tracker-header-actions">
+          <span className="tracker-sync-pill"><TrackerIcon name="trends" size={14} /> {primarySourceLabel}</span>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {[7, 14, 30].map((d) => (
               <button key={d} onClick={() => setDays(d)} className={`btn btn-sm ${days === d ? 'btn-primary' : 'btn-secondary'}`} style={{ width: 'auto' }}>
@@ -131,80 +146,135 @@ const Reports = () => {
           </div>
         </div>
       </div>
-      <div className="page-content">
+
+      <div className="page-content tracker-dashboard">
         {loading ? (
           <p style={{ color: 'var(--text-secondary)' }}>Loading report...</p>
         ) : !stats ? (
           <div className="card"><div className="empty-state"><div className="empty-state-icon">📊</div><h3>Not enough data</h3><p>Log more readings to see reports</p></div></div>
         ) : (
           <>
-            <div className="card" style={{ marginBottom: 20 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+            <section className="reports-hero">
+              <div className="card reports-hero-main">
                 <div>
-                  <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.08em', marginBottom: 8 }}>Report lens</div>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem' }}>{lens.title}</div>
-                  <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7, marginTop: 8 }}>{lens.detail}</p>
+                  <div className="eyebrow">Report lens</div>
+                  <h2>{lens.title}</h2>
+                  <p>{lens.detail}</p>
+                  <div className="reports-pill-row">
+                    <span className="tracker-pill"><TrackerIcon name="profile" size={14} /> {onboarding.experienceLevel || 'beginner'} level</span>
+                    <span className="tracker-pill"><TrackerIcon name="device" size={14} /> {modeLabel}</span>
+                    <span className="tracker-pill"><TrackerIcon name="activity" size={14} /> {connectedSources} connected or manual sources</span>
+                  </div>
                 </div>
-                <div style={{ minWidth: 220 }}>
-                  <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.08em', marginBottom: 8 }}>Tracking mode</div>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '1rem' }}>{modeLabel}</div>
-                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', marginTop: 6 }}>
-                    {onboarding.experienceLevel || 'beginner'} level summary
+                <div className="reports-hero-side">
+                  <div className="reports-score-tile">
+                    <span className="eyebrow">Window</span>
+                    <strong>{days} days</strong>
+                    <small>{stats.totalReadings || chartData.length} snapshots</small>
+                  </div>
+                  <div className="reports-score-tile reports-score-tile-accent">
+                    <span className="eyebrow">Interpretation</span>
+                    <strong>{primarySourceLabel}</strong>
+                    <small>{emphasis}</small>
                   </div>
                 </div>
               </div>
-              <p style={{ color: 'var(--text-secondary)', marginTop: 14, lineHeight: 1.7 }}>{emphasis}</p>
-              {onboarding.preferredTrackingMode === 'phone_only' && (
-                <p style={{ color: 'var(--text-secondary)', marginTop: 10, lineHeight: 1.7 }}>
-                  In phone-only mode, movement trends deserve more trust than exact body-vital precision. Use this report to confirm direction, and use manual check-ins when you want explicit vitals in the timeline.
-                </p>
-              )}
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
-                <span className="tracker-pill">Phone sync {sourceMix.phone}</span>
-                <span className="tracker-pill">Manual check-ins {sourceMix.manual}</span>
-                <span className="tracker-pill">Health Connect {sourceMix.healthConnect}</span>
-                <span className="tracker-pill">Preview band {sourceMix.preview}</span>
-              </div>
-              {onboarding.preferredTrackingMode === 'phone_only' && (
-                <Link to="/log" className="btn btn-secondary btn-sm" style={{ width: 'auto', marginTop: 12 }}>
-                  Add manual vitals
-                </Link>
-              )}
-            </div>
+            </section>
 
-            <div style={{ marginBottom: 24 }}>
-              <h3 style={{ fontFamily: 'var(--font-display)', marginBottom: 14, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>❤️ Heart Rate — Last {days} days</h3>
-              <div className="stats-grid">
-                <StatBox label="Avg BPM" value={stats.heartRate && stats.heartRate.avg} sub={lens.primaryStatLabels.includes('Avg BPM') ? 'Primary for your setup' : null} />
-                <StatBox label="Min BPM" value={stats.heartRate && stats.heartRate.min} sub={lens.primaryStatLabels.includes('Min BPM') ? 'Primary for your setup' : null} />
-                <StatBox label="Max BPM" value={stats.heartRate && stats.heartRate.max} sub={lens.primaryStatLabels.includes('Max BPM') ? 'Primary for your setup' : null} />
-                <StatBox label="Readings" value={stats.heartRate && stats.heartRate.count} sub={lens.primaryStatLabels.includes('Readings') ? 'Primary for your setup' : null} />
+            <section className="reports-source-grid">
+              <div className="card reports-source-card">
+                <div className="reports-source-icon"><TrackerIcon name="activity" size={18} /></div>
+                <span className="eyebrow">Phone sync</span>
+                <strong>{sourceMix.phone}</strong>
+                <p>Movement-led snapshots from free phone tracking.</p>
               </div>
-            </div>
+              <div className="card reports-source-card">
+                <div className="reports-source-icon"><TrackerIcon name="heart" size={18} /></div>
+                <span className="eyebrow">Manual check-ins</span>
+                <strong>{sourceMix.manual}</strong>
+                <p>Explicit vitals and wellness entries logged by the user.</p>
+              </div>
+              <div className="card reports-source-card">
+                <div className="reports-source-icon"><TrackerIcon name="sync" size={18} /></div>
+                <span className="eyebrow">Health Connect</span>
+                <strong>{sourceMix.healthConnect}</strong>
+                <p>Connected-source records flowing through the free Android adapter path.</p>
+              </div>
+              <div className="card reports-source-card">
+                <div className="reports-source-icon"><TrackerIcon name="device" size={18} /></div>
+                <span className="eyebrow">Preview band</span>
+                <strong>{sourceMix.preview}</strong>
+                <p>Future hardware-preview readings for richer sensor-backed demos.</p>
+              </div>
+            </section>
 
-            <div style={{ marginBottom: 24 }}>
-              <h3 style={{ fontFamily: 'var(--font-display)', marginBottom: 14, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>👟 Fitness Summary — Last {days} days</h3>
-              <div className="stats-grid">
-                <StatBox label="Total Steps" value={stats.steps && stats.steps.total && stats.steps.total.toLocaleString()} sub={lens.primaryStatLabels.includes('Total Steps') ? 'Primary for your setup' : null} />
-                <StatBox label="Total Calories" value={stats.calories && stats.calories.total} sub={lens.primaryStatLabels.includes('Total Calories') ? 'Primary for your setup' : null} />
-                <StatBox label="Distance (km)" value={stats.distance && stats.distance.total} sub={lens.primaryStatLabels.includes('Distance (km)') ? 'Primary for your setup' : null} />
-                <StatBox label="Active Mins" value={stats.activeMinutes && stats.activeMinutes.total} sub={lens.primaryStatLabels.includes('Active Mins') ? 'Primary for your setup' : null} />
+            {onboarding.preferredTrackingMode === 'phone_only' && (
+              <section className="card reports-callout">
+                <div>
+                  <div className="eyebrow">Phone-first note</div>
+                  <h3>Movement trends are stronger than passive body vitals</h3>
+                  <p>Use this page to judge direction and consistency. If you want explicit vitals to appear in these trends, add manual check-ins or import a connected source.</p>
+                </div>
+                <div className="reports-callout-actions">
+                  <Link to="/log" className="btn btn-secondary btn-sm" style={{ width: 'auto' }}>
+                    Add manual vitals
+                  </Link>
+                  <Link to="/wearable" className="btn btn-secondary btn-sm" style={{ width: 'auto' }}>
+                    Open device sources
+                  </Link>
+                </div>
+              </section>
+            )}
+
+            <section className="reports-section">
+              <div className="reports-section-head">
+                <div>
+                  <span className="eyebrow">Vitals</span>
+                  <h3>Heart and oxygen summary</h3>
+                </div>
               </div>
-            </div>
+              <div className="stats-grid reports-stats-grid">
+                <StatBox label="Avg BPM" value={stats.heartRate?.avg} sub={lens.primaryStatLabels.includes('Avg BPM') ? 'Primary for your setup' : 'Source-aware average'} />
+                <StatBox label="Min BPM" value={stats.heartRate?.min} sub={lens.primaryStatLabels.includes('Min BPM') ? 'Primary for your setup' : null} />
+                <StatBox label="Max BPM" value={stats.heartRate?.max} sub={lens.primaryStatLabels.includes('Max BPM') ? 'Primary for your setup' : null} />
+                <StatBox label="Readings" value={stats.heartRate?.count} sub={lens.primaryStatLabels.includes('Readings') ? 'Primary for your setup' : 'Vitals snapshots'} />
+              </div>
+            </section>
+
+            <section className="reports-section">
+              <div className="reports-section-head">
+                <div>
+                  <span className="eyebrow">Movement</span>
+                  <h3>Activity volume summary</h3>
+                </div>
+              </div>
+              <div className="stats-grid reports-stats-grid">
+                <StatBox label="Total Steps" value={stats.steps?.total && stats.steps.total.toLocaleString()} sub={lens.primaryStatLabels.includes('Total Steps') ? 'Primary for your setup' : 'Phone-first strong signal'} />
+                <StatBox label="Total Calories" value={stats.calories?.total} sub={lens.primaryStatLabels.includes('Total Calories') ? 'Primary for your setup' : null} />
+                <StatBox label="Distance (km)" value={stats.distance?.total} sub={lens.primaryStatLabels.includes('Distance (km)') ? 'Primary for your setup' : null} />
+                <StatBox label="Active Mins" value={stats.activeMinutes?.total} sub={lens.primaryStatLabels.includes('Active Mins') ? 'Primary for your setup' : null} />
+              </div>
+            </section>
 
             {chartData.length > 1 && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 20 }}>
-                <div className="chart-card">
-                  <h3>Heart Rate & SpO₂ Over Time</h3>
-                  <ResponsiveContainer width="100%" height={220}>
+              <section className="reports-chart-grid">
+                <div className="chart-card reports-chart-card">
+                  <div className="reports-chart-head">
+                    <div>
+                      <span className="eyebrow">Connected vitals</span>
+                      <h3>Heart rate and SpO₂</h3>
+                    </div>
+                    <small>Manual, Health Connect, or preview-band sources appear here when available.</small>
+                  </div>
+                  <ResponsiveContainer width="100%" height={240}>
                     <AreaChart data={chartData}>
                       <defs>
                         <linearGradient id="hrGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#e63946" stopOpacity={0.2} />
+                          <stop offset="5%" stopColor="#e63946" stopOpacity={0.22} />
                           <stop offset="95%" stopColor="#e63946" stopOpacity={0} />
                         </linearGradient>
                         <linearGradient id="spo2Grad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#4ecdc4" stopOpacity={0.2} />
+                          <stop offset="5%" stopColor="#4ecdc4" stopOpacity={0.18} />
                           <stop offset="95%" stopColor="#4ecdc4" stopOpacity={0} />
                         </linearGradient>
                       </defs>
@@ -218,22 +288,28 @@ const Reports = () => {
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
-                <div className="chart-card">
-                  <h3>Activity Volume (Steps / Calories / Active Mins)</h3>
-                  <ResponsiveContainer width="100%" height={220}>
+                <div className="chart-card reports-chart-card">
+                  <div className="reports-chart-head">
+                    <div>
+                      <span className="eyebrow">Movement</span>
+                      <h3>Steps, calories, and active minutes</h3>
+                    </div>
+                    <small>Best viewed as direction and weekly consistency.</small>
+                  </div>
+                  <ResponsiveContainer width="100%" height={240}>
                     <BarChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                       <XAxis dataKey="time" tick={{ fill: '#555570', fontSize: 11 }} />
                       <YAxis tick={{ fill: '#555570', fontSize: 11 }} />
                       <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8 }} />
                       <Legend />
-                      <Bar dataKey="steps" name="Steps" fill="#9b59b6" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="calories" name="Calories" fill="#e63946" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="activeMinutes" name="Active Minutes" fill="#4ecdc4" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="steps" name="Steps" fill="#9b59b6" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="calories" name="Calories" fill="#e63946" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="activeMinutes" name="Active Minutes" fill="#4ecdc4" radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-              </div>
+              </section>
             )}
           </>
         )}
