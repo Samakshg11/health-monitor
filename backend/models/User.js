@@ -57,20 +57,6 @@ const userSchema = new mongoose.Schema(
       renewsAt: { type: Date },
       trialEndsAt: { type: Date },
     },
-    terraConnections: [
-      {
-        terraUserId: { type: String, trim: true },
-        provider: { type: String, trim: true },
-        scopes: { type: String, trim: true },
-        status: {
-          type: String,
-          enum: ['connected', 'disconnected', 'error'],
-          default: 'connected',
-        },
-        lastWebhookUpdate: { type: Date },
-        connectedAt: { type: Date, default: Date.now },
-      },
-    ],
   },
   { timestamps: true }
 );

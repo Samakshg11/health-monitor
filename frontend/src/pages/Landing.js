@@ -153,11 +153,26 @@ const rolloutSteps = [
   { phase: 'Week 4', title: 'Scale Rollout', note: 'Expand to full operations with SLA review and governance checks.' },
 ];
 
+const integrationRoadmap = [
+  {
+    title: 'Available now',
+    detail: 'Phone-first tracking with motion, GPS, and trend-based estimation for activity and recovery.',
+  },
+  {
+    title: 'Free integration path',
+    detail: 'Android Health Connect and Apple HealthKit support without committing to monthly aggregator pricing.',
+  },
+  {
+    title: 'Future band',
+    detail: 'A companion VitalWatch band can later unlock direct sensor-backed vitals and tighter sync.',
+  },
+];
+
 const wearableSpecs = [
-  '24x7 pulse and activity stream',
-  'Sleep + stress trend detection',
-  '7-day battery with magnetic dock',
-  'IP67 splash and sweat resistance',
+  'Android via Health Connect',
+  'iPhone via HealthKit',
+  'Direct provider APIs when needed',
+  'Future companion band once the hardware path is validated',
 ];
 
 const getRiskBand = (age, sys, hr) => {
@@ -1037,8 +1052,8 @@ const Landing = () => {
 
       <section className="landing-wearable landing-section" id="wearable">
         <div className="landing-section-head">
-          <span>Hardware Ecosystem</span>
-          <h2>Meet VitalBand X1, our branded health wristband for continuous tracking</h2>
+          <span>Integration Ecosystem</span>
+          <h2>Start free with platform integrations today, expand to our own band later</h2>
         </div>
         <div className="landing-wearable-grid">
           <article className="landing-wearable-showcase">
@@ -1046,16 +1061,26 @@ const Landing = () => {
               <div className="wearable-core">♥</div>
             </div>
             <div className="wearable-meta">
-              <h3>VitalBand X1</h3>
+              <h3>Phone-first now, hardware-ready later</h3>
               <p>
-                Seamless sync with VitalWatch dashboards, alerts, and insights so your monitoring stack
-                feels complete from device to decision.
+                VitalWatch does not need paid aggregators to become credible. We can start with
+                native health platforms first, learn what users value, and only then expand into
+                direct providers or our own companion band.
               </p>
-              <strong>Starting at {formatINR(3999)}</strong>
+              <strong>Lower cost, cleaner roadmap</strong>
             </div>
           </article>
           <article className="landing-wearable-specs">
-            <h3>What you get with the wristband</h3>
+            <h3>How the roadmap unfolds</h3>
+            <div className="landing-integration-roadmap">
+              {integrationRoadmap.map((item) => (
+                <article key={item.title} className="landing-integration-step">
+                  <strong>{item.title}</strong>
+                  <p>{item.detail}</p>
+                </article>
+              ))}
+            </div>
+            <h3 style={{ marginTop: 18 }}>What we can integrate without a paid platform</h3>
             <ul>
               {wearableSpecs.map((spec) => (
                 <li key={spec}>{spec}</li>
@@ -1063,10 +1088,10 @@ const Landing = () => {
             </ul>
             <div className="landing-wearable-actions">
               <Link to="/wearable" className="btn btn-primary landing-btn">
-                Reserve VitalBand
+                Explore device roadmap
               </Link>
               <Link to="/wearable" className="btn btn-secondary landing-btn">
-                Bundle With Subscription
+                See free-first strategy
               </Link>
             </div>
           </article>

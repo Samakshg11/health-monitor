@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { createTerraWidgetSession, getLatestReading, getTerraConnections } from '../utils/api';
+import { getLatestReading } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { ProgressRing, SignalBars, TrackerIcon } from '../components/TrackerUI';
 
@@ -18,8 +18,6 @@ const WearableSetup = () => {
   const [wizardStep, setWizardStep] = useState(1);
   const [scanStatus, setScanStatus] = useState('idle');
   const [calibrationProgress, setCalibrationProgress] = useState(0);
-  const [terraConnections, setTerraConnections] = useState([]);
-  const [terraLoading, setTerraLoading] = useState(false);
 
   const loadLatest = async () => {
     try {
@@ -29,16 +27,8 @@ const WearableSetup = () => {
     setLoading(false);
   };
 
-  const loadTerraConnections = async () => {
-    try {
-      const { data } = await getTerraConnections();
-      setTerraConnections(data.connections || []);
-    } catch {}
-  };
-
   useEffect(() => {
     loadLatest();
-    loadTerraConnections();
     const id = setInterval(loadLatest, 20000);
     return () => clearInterval(id);
   }, []);
@@ -62,20 +52,6 @@ const WearableSetup = () => {
     toast.success('Permission check completed');
   };
 
-  const connectTerra = async () => {
-    setTerraLoading(true);
-    try {
-      const { data } = await createTerraWidgetSession({});
-      const url = data?.session?.url || data?.session?.widget_url || data?.session?.widgetUrl;
-      if (!url) throw new Error('Terra session URL missing');
-      window.open(url, '_blank', 'noopener,noreferrer');
-    } catch (err) {
-      toast.error(err?.response?.data?.message || err.message || 'Unable to start Terra connection');
-    } finally {
-      setTerraLoading(false);
-    }
-  };
-
   const onUnpair = () => {
     unpairWearable();
     toast.success('Device disconnected');
@@ -88,7 +64,7 @@ const WearableSetup = () => {
 
   const confirmPair = () => {
     pairWearable();
-    toast.success('VitalBand X1 paired successfully');
+    toast.success('Future band preview paired successfully');
     setWizardStep(3);
     setCalibrationProgress(20);
   };
@@ -110,13 +86,6 @@ const WearableSetup = () => {
   const source = wearable.sourceMode || latest?.source || 'estimated';
   const sourceDetails = latest?.sourceDetails;
   const lastSync = wearable.lastSyncAt ? new Date(wearable.lastSyncAt).toLocaleString() : 'No sync yet';
-  const syncLabel = wearable.lastSyncStatus === 'ok'
-    ? 'Connected and syncing'
-    : wearable.lastSyncStatus === 'error'
-      ? 'Connected, retrying'
-      : wearable.paired
-        ? 'Connected, waiting for first sync'
-        : 'Not connected';
   const signalStrength = wearable.paired ? (wearable.lastSyncStatus === 'error' ? 1 : latest ? 4 : 3) : 0;
 
   return (
@@ -124,8 +93,8 @@ const WearableSetup = () => {
       <div className="page-header tracker-header">
         <div>
           <span className="eyebrow">Device</span>
-          <h1>VitalBand X1</h1>
-          <p>Make the band feel real: battery, sync quality, permissions, and calibration all in one device surface.</p>
+          <h1>Device roadmap</h1>
+          <p>Free-first integration path now, future companion band later. This keeps the product credible without locking you into paid aggregators.</p>
         </div>
       </div>
 
@@ -148,12 +117,12 @@ const WearableSetup = () => {
             <div className="panel-heading">
               <div>
                 <span className="eyebrow">Band connected</span>
-                <h3>With VitalBand</h3>
+                <h3>With our future band</h3>
               </div>
             </div>
             <div className="tracker-diagnostics-list">
               <div className="tracker-diagnostic-row"><span>Movement</span><strong>Band steps + phone correction</strong></div>
-              <div className="tracker-diagnostic-row"><span>Vitals</span><strong>Optical band sensors</strong></div>
+              <div className="tracker-diagnostic-row"><span>Vitals</span><strong>Direct wearable-style sensor feed</strong></div>
               <div className="tracker-diagnostic-row"><span>Confidence</span><strong>Higher and more direct</strong></div>
             </div>
           </div>
@@ -163,14 +132,14 @@ const WearableSetup = () => {
           <div className="card tracker-device-hero">
             <div className="tracker-device-copy">
               <span className="eyebrow">Connection</span>
-              <h2>{syncLabel}</h2>
+              <h2>{wearable.paired ? 'Preview band flow active' : 'Phone-first flow active'}</h2>
               <p>
                 Source mode is <strong>{sourceDetails?.label || source.replace(/_/g, ' ')}</strong>.
                 {' '}Last sync: {lastSync}.
                 {' '}{sourceDetails?.primarySource ? `${sourceDetails.primarySource}.` : ''}
               </p>
               <div className="tracker-hero-badges">
-                <span className="tracker-pill"><TrackerIcon name="sync" size={14} /> {wearable.paired ? 'Band paired' : 'Awaiting pair'}</span>
+                <span className="tracker-pill"><TrackerIcon name="sync" size={14} /> {wearable.paired ? 'Preview flow paired' : 'Awaiting preview pair'}</span>
                 <span className="tracker-pill"><TrackerIcon name="signal" size={14} /> <SignalBars strength={signalStrength} /></span>
               </div>
             </div>
@@ -197,27 +166,24 @@ const WearableSetup = () => {
         </section>
 
         <section className="tracker-device-details">
-          <div className="card">
-            <div className="panel-heading">
-              <div>
-                <span className="eyebrow">Controls</span>
-                <h3>Band setup</h3>
+            <div className="card">
+              <div className="panel-heading">
+                <div>
+                  <span className="eyebrow">Free integrations</span>
+                  <h3>Recommended path</h3>
+                </div>
               </div>
-            </div>
             <div className="tracker-device-actions">
               <button type="button" className="btn btn-secondary btn-sm" style={{ width: 'auto' }} onClick={onPermissions}>
                 Check permissions
               </button>
-              <button type="button" className="btn btn-secondary btn-sm" style={{ width: 'auto' }} onClick={connectTerra} disabled={terraLoading}>
-                {terraLoading ? 'Opening Terra...' : 'Connect via Terra'}
-              </button>
               {wearable.paired ? (
                 <button type="button" className="btn btn-secondary btn-sm" style={{ width: 'auto' }} onClick={onUnpair}>
-                  Disconnect band
+                  Disconnect preview
                 </button>
               ) : (
                 <button type="button" className="btn btn-primary btn-sm" style={{ width: 'auto' }} onClick={startWizard}>
-                  Pair new band
+                  Start preview pairing
                 </button>
               )}
             </div>
@@ -225,7 +191,7 @@ const WearableSetup = () => {
             <div className="tracker-device-checklist">
               <div className="tracker-check-item">
                 <span>Bluetooth pairing</span>
-                <strong>{wearable.paired ? 'Ready' : 'Pending'}</strong>
+                <strong>{wearable.paired ? 'Preview ready' : 'Pending'}</strong>
               </div>
               <div className="tracker-check-item">
                 <span>Location</span>
@@ -240,8 +206,8 @@ const WearableSetup = () => {
                 <strong>{wearable.sensorStatus.hasGeo || wearable.sensorStatus.hasMotion ? 'Streaming' : 'Idle'}</strong>
               </div>
               <div className="tracker-check-item">
-                <span>Terra providers</span>
-                <strong>{terraConnections.length}</strong>
+                <span>Android path</span>
+                <strong>Health Connect</strong>
               </div>
             </div>
           </div>
@@ -281,28 +247,33 @@ const WearableSetup = () => {
         <section className="card" style={{ marginTop: 18 }}>
           <div className="panel-heading">
             <div>
-              <span className="eyebrow">Terra</span>
-              <h3>Connected providers</h3>
+              <span className="eyebrow">Roadmap</span>
+              <h3>Free-first wearable strategy</h3>
             </div>
           </div>
-          {terraConnections.length === 0 ? (
-            <p style={{ color: 'var(--text-secondary)' }}>
-              No Terra-connected provider yet. When connected, Terra can bring Apple Health, Google Fit, Fitbit, Garmin,
-              Oura, and other normalized wearable feeds into this project.
-            </p>
-          ) : (
-            <div className="tracker-diagnostics-list">
-              {terraConnections.map((connection) => (
-                <div key={`${connection.terraUserId}-${connection.provider}`} className="tracker-diagnostic-row">
-                  <span>{connection.provider || 'Provider'}</span>
-                  <div>
-                    <strong>{connection.status}</strong>
-                    <small>{connection.lastWebhookUpdate ? new Date(connection.lastWebhookUpdate).toLocaleString() : 'Awaiting webhook'}</small>
-                  </div>
-                </div>
-              ))}
+          <div className="tracker-diagnostics-list">
+            <div className="tracker-diagnostic-row">
+              <span>Android</span>
+              <div>
+                <strong>Health Connect</strong>
+                <small>Best free path for normalized phone and health data</small>
+              </div>
             </div>
-          )}
+            <div className="tracker-diagnostic-row">
+              <span>iPhone</span>
+              <div>
+                <strong>HealthKit</strong>
+                <small>No monthly platform fee, but Apple developer membership is typically needed</small>
+              </div>
+            </div>
+              <div className="tracker-diagnostic-row">
+                <span>Later</span>
+                <div>
+                  <strong>Direct provider APIs</strong>
+                  <small>Fitbit, Garmin, Oura, or your own band when traction justifies it</small>
+                </div>
+              </div>
+            </div>
         </section>
 
         <section className="card">
@@ -337,9 +308,9 @@ const WearableSetup = () => {
       {wizardOpen && (
         <div className="landing-modal-overlay" onClick={closeWizard}>
           <div className="landing-modal tracker-pair-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560 }}>
-            <span className="eyebrow">Pairing wizard</span>
-            <h3>Connect your VitalBand</h3>
-            <p>Step {wizardStep} of 3. Scan nearby, confirm permissions, then calibrate motion and heart rate.</p>
+            <span className="eyebrow">Preview pairing</span>
+            <h3>Simulate the future companion band</h3>
+            <p>Step {wizardStep} of 3. This preview shows how the app would behave once your own wearable is available.</p>
 
             <div className="tracker-progress-bar">
               <div style={{ width: `${(wizardStep / 3) * 100}%` }} />
@@ -351,8 +322,8 @@ const WearableSetup = () => {
                   <div className="tracker-device-shell mini">
                     <div className="tracker-device-screen">
                       <TrackerIcon name="device" size={18} />
-                      <strong>X1</strong>
-                      <small>{scanStatus === 'found' ? 'Found nearby' : scanStatus === 'scanning' ? 'Searching...' : 'Ready to scan'}</small>
+                      <strong>Preview</strong>
+                      <small>{scanStatus === 'found' ? 'Preview device found' : scanStatus === 'scanning' ? 'Searching...' : 'Ready to scan'}</small>
                     </div>
                   </div>
                 </div>
@@ -386,7 +357,7 @@ const WearableSetup = () => {
                 <div className="landing-modal-actions">
                   <button type="button" className="btn btn-secondary" onClick={() => setWizardStep(1)}>Back</button>
                   <button type="button" className="btn btn-secondary" onClick={onPermissions}>Refresh permissions</button>
-                  <button type="button" className="btn btn-primary" onClick={confirmPair}>Pair band</button>
+                  <button type="button" className="btn btn-primary" onClick={confirmPair}>Enable preview</button>
                 </div>
               </div>
             )}
@@ -397,8 +368,8 @@ const WearableSetup = () => {
                   <ProgressRing value={calibrationProgress} color="var(--accent-blue)" label="Calibrating" sublabel={calibrationProgress >= 100 ? 'ready' : 'hold still'} compact />
                   <p style={{ color: 'var(--text-secondary)', marginTop: 14 }}>
                     {calibrationProgress >= 100
-                      ? 'Calibration complete. The band is now ready to stream live movement and vitals.'
-                      : 'Keep the device close while the tracker tunes movement and heart-rate confidence.'}
+                      ? 'Calibration complete. The future band preview flow is now active for live movement and vitals.'
+                      : 'Keep the device close while the app previews movement and heart-rate confidence tuning.'}
                   </p>
                 </div>
                 <div className="landing-modal-actions">

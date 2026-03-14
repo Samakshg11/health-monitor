@@ -1657,6 +1657,30 @@ body {
   margin-bottom: 16px;
 }
 
+.landing-integration-roadmap {
+  display: grid;
+  gap: 10px;
+}
+
+.landing-integration-step {
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.03);
+  padding: 12px;
+}
+
+.landing-integration-step strong {
+  display: block;
+  font-family: var(--font-display);
+  margin-bottom: 5px;
+}
+
+.landing-integration-step p {
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
 .landing-wearable-specs li {
   position: relative;
   padding-left: 18px;

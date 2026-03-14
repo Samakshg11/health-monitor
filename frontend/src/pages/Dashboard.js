@@ -225,9 +225,9 @@ const Dashboard = () => {
   ];
 
   const statusTone = toneForStatus(latest?.heartRate?.status);
-  const sourceHeadline = sourceMode === 'band_plus_phone' ? 'Band-connected tracking' : 'Phone-only tracking';
+  const sourceHeadline = sourceMode === 'band_plus_phone' ? 'Future band preview flow' : 'Phone-only tracking';
   const sourceSummary = sourceMode === 'band_plus_phone'
-    ? `${sourceDetails?.primarySource || 'Band sensors'} feed vitals, while ${sourceDetails?.movementSource || 'phone GPS'} helps refine activity.`
+    ? `${sourceDetails?.primarySource || 'Band-preview sensors'} feed vitals, while ${sourceDetails?.movementSource || 'phone GPS'} helps refine activity.`
     : `${sourceDetails?.movementSource || 'Phone motion and GPS'} power movement, while vitals are estimated from activity and recent patterns.`;
 
   return (
@@ -236,7 +236,7 @@ const Dashboard = () => {
         <div>
           <span className="eyebrow">Daily summary</span>
           <h1>{greeting}, {firstName}</h1>
-          <p>{format(new Date(), 'EEEE, MMMM d')} · Everything from your band and current session in one place.</p>
+          <p>{format(new Date(), 'EEEE, MMMM d')} · Your current session, activity estimates, and future wearable-ready flow in one place.</p>
         </div>
         <div className="tracker-header-actions">
           <span className="live-badge"><span className="live-dot" /> Syncing live</span>

@@ -162,17 +162,17 @@ export const AuthProvider = ({ children }) => {
     const contributors = [];
     if (sensors.hasMotion) contributors.push('phone-motion');
     if (sensors.hasGeo) contributors.push('phone-gps');
-    if (isPaired) contributors.unshift('vitalband-optical-sensors');
+    if (isPaired) contributors.unshift('future-band-preview-sensors');
 
     return isPaired
       ? {
           mode: 'band_plus_phone',
-          label: 'Band + phone',
-          deviceName: 'VitalBand X1',
+          label: 'Future band + phone',
+          deviceName: 'Future VitalWatch band preview',
           deviceBattery: wearableRef.current.battery,
-          primarySource: 'VitalBand optical sensors',
-          movementSource: sensors.hasGeo ? 'Band steps with phone GPS correction' : 'Band steps and cadence',
-          recoverySource: 'Band vitals plus activity fusion',
+          primarySource: 'Future band sensor preview',
+          movementSource: sensors.hasGeo ? 'Band-style steps with phone GPS correction' : 'Band-style steps and cadence',
+          recoverySource: 'Band-style vitals plus activity fusion',
           contributors,
           overallConfidence,
         }

@@ -135,17 +135,17 @@ const Billing = () => {
         <div className="card" style={{ marginTop: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
             <div>
-              <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.08em' }}>Wearable Add-on</div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.35rem' }}>VitalBand X1</div>
+              <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.08em' }}>Future Hardware Path</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.35rem' }}>Companion band preview</div>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.86rem', marginTop: 6 }}>
-                Brand wristband for always-on tracking with direct dashboard sync.
+                Explore how a future VitalWatch band could extend always-on tracking once the hardware roadmap is validated.
               </p>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '1.4rem', color: 'var(--accent-red)' }}>{formatINR(3999)}</div>
-              <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>one-time hardware price</div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '1.4rem', color: 'var(--accent-red)' }}>Roadmap item</div>
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>Pricing will be defined after validation</div>
               <Link to="/wearable" className="btn btn-primary btn-sm" style={{ width: 'auto', marginTop: 10, display: 'inline-block' }}>
-                Reserve Wristband
+                View roadmap
               </Link>
             </div>
           </div>
