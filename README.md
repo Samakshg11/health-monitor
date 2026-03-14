@@ -172,6 +172,8 @@ VitalWatch now separates sources explicitly:
 
 This keeps the app honest: phone-only mode does not pretend to have direct sensor vitals.
 
+For local demos, the Device page includes a mock Health Connect import action that sends a sample connected-source payload through the backend adapter route.
+
 ## 🎨 Design System
 
 - **Theme**: Dark medical aesthetic

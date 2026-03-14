@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { getLatestReading } from '../utils/api';
+import { getLatestReading, importHealthConnectReading } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { ProgressRing, SignalBars, TrackerIcon } from '../components/TrackerUI';
 
@@ -39,6 +39,56 @@ const deviceLens = {
   },
 };
 
+const buildMockHealthConnectPayload = () => {
+  const now = new Date();
+  const hour = now.getHours();
+  const recoveryBias = hour < 9 ? 1.06 : hour > 19 ? 0.96 : 1;
+
+  return {
+    deviceName: 'Android Health Connect',
+    primarySource: 'Health Connect mock bridge',
+    contributors: ['health-connect-adapter', 'android-phone', 'fitness-platform-records'],
+    confidenceTier: 'high',
+    summary: {
+      movementSupport: 'platform-backed',
+      vitalsSupport: 'connected source',
+      recoverySupport: 'connected source',
+    },
+    confidence: {
+      overall: 89,
+      heartRate: 91,
+      bloodPressure: 84,
+      spo2: 88,
+      temperature: 81,
+      steps: 93,
+      distance: 92,
+      activeMinutes: 91,
+      hydration: 72,
+      sleepScore: 85,
+      sleepHours: 85,
+      stressLevel: 78,
+    },
+    workoutMode: hour > 18 ? 'recovery' : 'balanced',
+    notes: 'Mock Health Connect import for free-source demo flow',
+    metrics: {
+      heartRate: Math.round(66 * recoveryBias),
+      systolic: 118,
+      diastolic: 78,
+      spo2: 98,
+      temperature: 36.6,
+      steps: 8430,
+      calories: 412,
+      distance: 6.1,
+      cadence: 158,
+      activeMinutes: 47,
+      hydration: 76,
+      sleepScore: Math.round(82 * recoveryBias),
+      sleepHours: Number((7.4 * recoveryBias).toFixed(1)),
+      stressLevel: Math.round(34 / recoveryBias),
+    },
+  };
+};
+
 const WearableSetup = () => {
   const { wearable, user, pairWearable, unpairWearable, requestSensorPermissions } = useAuth();
   const [latest, setLatest] = useState(null);
@@ -47,6 +97,7 @@ const WearableSetup = () => {
   const [wizardStep, setWizardStep] = useState(1);
   const [scanStatus, setScanStatus] = useState('idle');
   const [calibrationProgress, setCalibrationProgress] = useState(0);
+  const [importingHealthConnect, setImportingHealthConnect] = useState(false);
 
   const loadLatest = async () => {
     try {
@@ -96,6 +147,21 @@ const WearableSetup = () => {
     toast.success('Future band preview paired successfully');
     setWizardStep(3);
     setCalibrationProgress(20);
+  };
+
+  const importMockHealthConnect = async () => {
+    setImportingHealthConnect(true);
+    try {
+      const payload = buildMockHealthConnectPayload();
+      await importHealthConnectReading(payload);
+      await loadLatest();
+      toast.success('Mock Health Connect reading imported');
+    } catch (err) {
+      const message = err?.response?.data?.message || 'Failed to import Health Connect sample';
+      toast.error(message);
+    } finally {
+      setImportingHealthConnect(false);
+    }
   };
 
   useEffect(() => {
@@ -253,6 +319,15 @@ const WearableSetup = () => {
             <div className="tracker-device-actions">
               <button type="button" className="btn btn-secondary btn-sm" style={{ width: 'auto' }} onClick={onPermissions}>
                 Check permissions
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                style={{ width: 'auto' }}
+                onClick={importMockHealthConnect}
+                disabled={importingHealthConnect}
+              >
+                {importingHealthConnect ? 'Importing sample...' : 'Import Health Connect sample'}
               </button>
               {wearable.paired ? (
                 <button type="button" className="btn btn-secondary btn-sm" style={{ width: 'auto' }} onClick={onUnpair}>

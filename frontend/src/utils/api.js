@@ -38,6 +38,7 @@ export const getFitnessToday = () => API.get('/health/fitness/today');
 export const getInsights = (days) => API.get('/health/insights', { params: { days } });
 export const getGoals = () => API.get('/health/goals');
 export const updateGoals = (payload) => API.put('/health/goals', payload);
+export const importHealthConnectReading = (payload) => API.post('/health/import/health-connect', payload);
 export const getBillingPlans = () => API.get('/billing/plans');
 export const getBillingCurrent = () => API.get('/billing/current');
 export const subscribePlan = (payload) => API.post('/billing/subscribe', payload);
