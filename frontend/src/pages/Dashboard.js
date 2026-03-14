@@ -173,10 +173,21 @@ const confidenceTierCopy = {
   low: 'Directional confidence',
 };
 
+const hasDirectBodySignals = (reading) => Boolean(
+  reading?.heartRate?.value ||
+  reading?.bloodPressure?.systolic ||
+  reading?.spo2?.value ||
+  reading?.temperature?.value ||
+  reading?.sleepHours?.value ||
+  reading?.sleepScore?.value ||
+  reading?.stressLevel?.value
+);
+
 const Dashboard = () => {
   const { user, tracking, enableTracking } = useAuth();
   const { latestReading: socketReading, liveAlerts } = useSocket();
   const [latest, setLatest] = useState(null);
+  const [latestBodyReading, setLatestBodyReading] = useState(null);
   const [chartData, setChartData] = useState([]);
   const [fitnessSummary, setFitnessSummary] = useState(null);
   const [billingSummary, setBillingSummary] = useState(null);
@@ -199,8 +210,11 @@ const Dashboard = () => {
 
       setLatest(latestRes.data.reading);
       setBillingSummary(billingRes.data);
+      const recentReadings = readingsRes.data.readings || [];
+      const directBodyReading = [latestRes.data.reading, ...recentReadings].find(hasDirectBodySignals) || null;
+      setLatestBodyReading(directBodyReading);
 
-      const readings = readingsRes.data.readings.reverse();
+      const readings = recentReadings.reverse();
       setChartData(
         readings.map((reading) => ({
           time: format(new Date(reading.recordedAt), 'HH:mm'),
@@ -223,6 +237,9 @@ const Dashboard = () => {
   useEffect(() => {
     if (!socketReading) return;
     setLatest(socketReading);
+    if (hasDirectBodySignals(socketReading)) {
+      setLatestBodyReading(socketReading);
+    }
     setChartData((prev) => {
       const point = {
         time: format(new Date(socketReading.recordedAt), 'HH:mm'),
@@ -246,19 +263,22 @@ const Dashboard = () => {
   const greeting = hour < 12 ? 'Morning' : hour < 17 ? 'Afternoon' : 'Evening';
   const totals = fitnessSummary?.totals;
   const progress = fitnessSummary?.progress;
+  const bodyReading = latestBodyReading || latest;
   const stepGoalProgress = progress?.steps ?? 0;
   const activeGoalProgress = progress?.activeMinutes ?? 0;
   const hydrationGoalProgress = progress?.hydration ?? 0;
-  const recoveryScore = latest?.sleepScore?.value ?? 72;
+  const recoveryScore = bodyReading?.sleepScore?.value ?? 72;
   const sourceDetails = latest?.sourceDetails;
-  const sourceMode = sourceDetails?.mode || (latest?.source === 'device' ? 'band_plus_phone' : 'phone_only');
+  const sourceMode = sourceDetails?.mode || (latest?.source === 'device' ? 'band_plus_phone' : latest?.source === 'health_connect' ? 'health_connect' : 'phone_only');
+  const bodySourceDetails = bodyReading?.sourceDetails;
+  const bodySourceMode = bodySourceDetails?.mode || (bodyReading?.source === 'device' ? 'band_plus_phone' : bodyReading?.source === 'health_connect' ? 'health_connect' : bodyReading?.source === 'manual' ? 'manual_entry' : 'phone_only');
   const readinessScore = Math.max(
     0,
     Math.min(
       100,
       Math.round(
-        ((100 - (latest?.stressLevel?.value ?? 35)) * 0.35) +
-        ((latest?.sleepScore?.value ?? 75) * 0.4) +
+        ((100 - (bodyReading?.stressLevel?.value ?? 35)) * 0.35) +
+        ((bodyReading?.sleepScore?.value ?? 75) * 0.4) +
         ((progress?.activeMinutes ?? 45) * 0.25)
       )
     )
@@ -286,7 +306,7 @@ const Dashboard = () => {
     },
     {
       title: 'Recover',
-      value: latest?.sleepHours?.value || '—',
+      value: bodyReading?.sleepHours?.value || '—',
       unit: 'hrs',
       detail: `${recoveryScore}% sleep score`,
       icon: 'sleep',
@@ -307,7 +327,9 @@ const Dashboard = () => {
   const selectedGoal = goalCopy[onboarding.trackingGoal] || goalCopy.fitness;
   const selectedExperience = experienceCopy[onboarding.experienceLevel] || experienceCopy.beginner;
   const confidenceTier = sourceDetails?.confidenceTier || (latest?.confidence?.overall >= 78 ? 'high' : latest?.confidence?.overall >= 56 ? 'medium' : 'low');
+  const bodyConfidenceTier = bodySourceDetails?.confidenceTier || (bodyReading?.confidence?.overall >= 78 ? 'high' : bodyReading?.confidence?.overall >= 56 ? 'medium' : 'low');
   const supportedMetrics = sourceDetails?.supportedMetrics || {};
+  const bodySupportedMetrics = bodySourceDetails?.supportedMetrics || {};
   const sourceStrengthSummary = [
     `Movement ${supportedMetrics.movement || 'stronger'}`,
     `Vitals ${supportedMetrics.vitals || 'estimated'}`,
@@ -447,21 +469,21 @@ const Dashboard = () => {
               <span className="eyebrow">Readiness</span>
               <h2>{readinessScore >= 75 ? 'Ready to push' : readinessScore >= 55 ? 'Solid training day' : 'Take a lighter approach'}</h2>
               <p>
-                Recovery is {recoveryScore}% and your current load is {latest?.stressLevel?.value ?? '—'}%.
+                Recovery is {recoveryScore}% and your current load is {bodyReading?.stressLevel?.value ?? '—'}%.
                 {' '}Mode is set to <strong style={{ textTransform: 'capitalize' }}>{currentMode}</strong>.
               </p>
               <div className="tracker-hero-badges">
                 <span className="tracker-pill"><TrackerIcon name="device" size={14} /> {sourceHeadline}</span>
-                <span className="tracker-pill"><TrackerIcon name="signal" size={14} /> {confidenceTierCopy[confidenceTier] || 'Moderate confidence'}</span>
-                {sourceMode === 'phone_only' && supportedMetrics.vitals === 'manual check-in required' ? (
+                <span className="tracker-pill"><TrackerIcon name="signal" size={14} /> {confidenceTierCopy[bodyConfidenceTier] || 'Moderate confidence'}</span>
+                {bodySourceMode === 'phone_only' && bodySupportedMetrics.vitals === 'manual check-in required' ? (
                   <Link to="/log" className="tracker-pill" style={{ textDecoration: 'none' }}>
                     <TrackerIcon name="heart" size={14} /> Add manual vitals
                   </Link>
                 ) : (
                   <>
-                    <span className="tracker-pill"><TrackerIcon name="heart" size={14} /> {latest?.heartRate?.value ?? '—'} BPM</span>
-                    <span className="tracker-pill"><TrackerIcon name="oxygen" size={14} /> {latest?.spo2?.value ?? '—'}% SpO2</span>
-                    <span className="tracker-pill"><TrackerIcon name="temperature" size={14} /> {latest?.temperature?.value ?? '—'}°C</span>
+                    <span className="tracker-pill"><TrackerIcon name="heart" size={14} /> {bodyReading?.heartRate?.value ?? '—'} BPM</span>
+                    <span className="tracker-pill"><TrackerIcon name="oxygen" size={14} /> {bodyReading?.spo2?.value ?? '—'}% SpO2</span>
+                    <span className="tracker-pill"><TrackerIcon name="temperature" size={14} /> {bodyReading?.temperature?.value ?? '—'}°C</span>
                   </>
                 )}
               </div>
@@ -532,11 +554,11 @@ const Dashboard = () => {
               </div>
               <div className="tracker-summary-row">
                 <span><TrackerIcon name="heart" size={16} /> Vitals</span>
-                <strong>{latest?.confidence?.heartRate ?? '—'}% · {supportedMetrics.vitals || 'estimated'}</strong>
+                <strong>{bodyReading?.confidence?.heartRate ?? bodyReading?.confidence?.overall ?? '—'}% · {bodySupportedMetrics.vitals || 'estimated'}</strong>
               </div>
               <div className="tracker-summary-row">
                 <span><TrackerIcon name="sleep" size={16} /> Recovery</span>
-                <strong>{latest?.confidence?.sleepScore ?? '—'}% · {supportedMetrics.recovery || 'trend-based'}</strong>
+                <strong>{bodyReading?.confidence?.sleepScore ?? bodyReading?.confidence?.overall ?? '—'}% · {bodySupportedMetrics.recovery || 'trend-based'}</strong>
               </div>
             </div>
           </div>
@@ -649,11 +671,11 @@ const Dashboard = () => {
               </div>
               <div className="tracker-summary-row">
                 <span><TrackerIcon name="sleep" size={16} /> Sleep</span>
-                <strong>{latest?.sleepHours?.value || '—'} hrs</strong>
+                <strong>{bodyReading?.sleepHours?.value || '—'} hrs</strong>
               </div>
               <div className="tracker-summary-row">
                 <span><TrackerIcon name="stress" size={16} /> Stress</span>
-                <strong>{latest?.stressLevel?.value || '—'}%</strong>
+                <strong>{bodyReading?.stressLevel?.value || '—'}%</strong>
               </div>
             </div>
           </div>
@@ -691,13 +713,13 @@ const Dashboard = () => {
             </div>
           </div>
           <div className="tracker-vitals-grid">
-            {metricCards(latest).map((metric) => {
+            {metricCards(bodyReading).map((metric) => {
               const rendered = getMetricPresentation({
                 metricKey: metric.key === 'heart-rate' ? 'heart' : metric.key,
                 metric,
                 fallbackUnit: metric.unit,
-                sourceMode,
-                sourceDetails: { ...sourceDetails, overallConfidence: latest?.confidence?.overall },
+                sourceMode: bodySourceMode,
+                sourceDetails: { ...bodySourceDetails, overallConfidence: bodyReading?.confidence?.overall },
               });
 
               return (
