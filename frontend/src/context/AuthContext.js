@@ -108,7 +108,7 @@ export const AuthProvider = ({ children }) => {
   });
   const trackerRef = useRef({
     mode: 'balanced',
-    heartRate: 118,
+    heartRate: 74,
     systolic: 122,
     diastolic: 80,
     spo2: 97,
@@ -466,20 +466,31 @@ export const AuthProvider = ({ children }) => {
       const sleepConfidence = clamp((phoneOnly ? 44 : 78) + (goalProfile.sleepOffset > 0 ? 3 : 0) + (freshMotion ? 2 : 0), 35, 93);
       const stressConfidence = clamp((phoneOnly ? 38 : 74) + (goalProfile.stressOffset < 0 ? 4 : 0) + (freshMotion ? 4 : 0), 28, 92);
 
+      const restingTarget = mode === 'recovery' ? rand(66, 78) : mode === 'balanced' ? rand(72, 90) : rand(84, 108);
+      const exertionLift = isPaired
+        ? exertionScore * (mode === 'push' ? 0.18 : mode === 'balanced' ? 0.12 : 0.08)
+        : exertionScore * (mode === 'push' ? 0.09 : mode === 'balanced' ? 0.06 : 0.04);
+      const targetHeartRate = clamp(
+        restingTarget +
+        exertionLift +
+        (freshMotion ? (isPaired ? 4 : 2) : 0),
+        62,
+        isPaired ? 152 : 134
+      );
+      const maxHeartRateStep = isPaired ? 7 : 5;
+      const heartRateDrift = rand(-2, 2);
+      const nextHeartRate = current.heartRate + ((targetHeartRate - current.heartRate) * (isPaired ? 0.28 : 0.2)) + heartRateDrift;
       const heartRate = clamp(
         Math.round(
-          current.heartRate +
-          rand(phoneOnly ? -5 : -3, phoneOnly ? 5 : 3) +
-          (isPaired ? exertionScore * 0.34 : exertionScore * 0.16) +
-          (rand(profile.hr[0], profile.hr[1]) - current.heartRate) * (isPaired ? 0.22 : 0.08)
+          clamp(nextHeartRate, current.heartRate - maxHeartRateStep, current.heartRate + maxHeartRateStep)
         ),
-        68,
-        176
+        62,
+        isPaired ? 160 : 138
       );
       const estimatedHeartRate = clamp(
-        Math.round(62 + (activitySignal * 0.42) + rand(-7, 8) + (goalProfile.stressOffset * 0.4)),
+        Math.round(64 + (activitySignal * 0.18) + rand(-4, 4) + (goalProfile.stressOffset * 0.25)),
         60,
-        152
+        118
       );
       const finalHeartRate = phoneOnly && vitalsConfidence < 40 ? estimatedHeartRate : heartRate;
       const systolic = clamp(
