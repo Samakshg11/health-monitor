@@ -177,6 +177,20 @@ const WearableSetup = () => {
           <div className="card">
             <div className="panel-heading">
               <div>
+                <span className="eyebrow">Android next</span>
+                <h3>With Health Connect</h3>
+              </div>
+            </div>
+            <div className="tracker-diagnostics-list">
+              <div className="tracker-diagnostic-row"><span>Movement</span><strong>Platform-backed activity records</strong></div>
+              <div className="tracker-diagnostic-row"><span>Vitals</span><strong>Connected source when available</strong></div>
+              <div className="tracker-diagnostic-row"><span>Confidence</span><strong>Higher than phone-only</strong></div>
+              <div className="tracker-diagnostic-row"><span>Status</span><strong>Backend adapter ready</strong></div>
+            </div>
+          </div>
+          <div className="card">
+            <div className="panel-heading">
+              <div>
                 <span className="eyebrow">Band connected</span>
                 <h3>With our future band</h3>
               </div>
@@ -273,6 +287,10 @@ const WearableSetup = () => {
                 <strong>Health Connect</strong>
               </div>
               <div className="tracker-check-item">
+                <span>Adapter</span>
+                <strong>Backend-ready</strong>
+              </div>
+              <div className="tracker-check-item">
                 <span>Best fit</span>
                 <strong>{onboarding.trackingGoal || 'fitness'}</strong>
               </div>
@@ -335,13 +353,13 @@ const WearableSetup = () => {
             </div>
           </div>
           <div className="tracker-diagnostics-list">
-            <div className="tracker-diagnostic-row">
-              <span>Android</span>
-              <div>
-                <strong>Health Connect</strong>
-                <small>Best free path for normalized phone and health data</small>
+              <div className="tracker-diagnostic-row">
+                <span>Android</span>
+                <div>
+                  <strong>Health Connect</strong>
+                  <small>Best free path for normalized phone and health data, with backend adapter support now prepared</small>
+                </div>
               </div>
-            </div>
             <div className="tracker-diagnostic-row">
               <span>iPhone</span>
               <div>

@@ -13,6 +13,7 @@ A full-stack MERN application for tracking and monitoring personal health vitals
 - **🔐 Auth** — JWT-based login/register with protected routes
 - **👤 Profile** — Personal health info + BMI calculator
 - **⌚ Free-First Wearable Roadmap** — Prepared for Android Health Connect, Apple HealthKit, and future direct band/provider integrations
+- **🧩 Source-Aware Pipeline** — Phone sync, manual check-ins, Health Connect-ready imports, and future band preview all flow through explicit source metadata
 
 ## 🛠 Tech Stack
 
@@ -37,6 +38,11 @@ vitalwatch/
 │   │   ├── auth.js          # Register, Login, Profile
 │   │   ├── health.js        # CRUD for readings + stats
 │   │   └── alerts.js        # Alert management
+│   ├── utils/
+│   │   ├── healthPipeline.js      # Backend source normalization rules
+│   │   └── healthConnectAdapter.js # Health Connect payload adapter
+│   ├── tests/
+│   │   └── healthPipeline.test.js # Source-rule tests
 │   ├── middleware/
 │   │   └── auth.js          # JWT protection middleware
 │   ├── .env.example
@@ -129,6 +135,7 @@ PUT    /api/auth/profile     Update profile
 ### Health
 ```
 POST   /api/health/reading      Submit new reading
+POST   /api/health/import/health-connect  Import adapted Health Connect payload
 GET    /api/health/readings     Get history (pagination)
 GET    /api/health/latest       Get most recent reading
 GET    /api/health/stats        Get aggregated stats (?days=7)
@@ -153,6 +160,17 @@ When a user submits a reading, the backend:
 5. Emits `new_alert` events for each generated alert
 
 Frontend listens on the user's private room and updates the dashboard live.
+
+## 🧭 Data Source Model
+
+VitalWatch now separates sources explicitly:
+
+- `estimated` — phone-sync activity and trend-based recovery context
+- `manual` — user-entered vitals and wellness check-ins
+- `health_connect` — backend-ready Android Health Connect adapter path
+- `device` — future band preview path
+
+This keeps the app honest: phone-only mode does not pretend to have direct sensor vitals.
 
 ## 🎨 Design System
 

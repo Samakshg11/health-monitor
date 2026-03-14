@@ -19,6 +19,25 @@ const shouldSoftenEstimatedAlert = (reading, key) => {
 };
 
 const buildDefaultSourceDetails = (source, sourceDetails = {}) => {
+  if (source === 'health_connect') {
+    return {
+      mode: 'health_connect',
+      label: 'Health Connect',
+      deviceName: 'Android Health Connect',
+      primarySource: 'Android Health Connect adapter',
+      movementSource: 'Health Connect activity records',
+      recoverySource: 'Health Connect wellness records',
+      confidenceTier: 'high',
+      supportedMetrics: {
+        movement: 'platform-backed',
+        vitals: 'connected source',
+        recovery: 'connected source',
+      },
+      contributors: ['health-connect-adapter'],
+      ...sourceDetails,
+    };
+  }
+
   if (source === 'manual') {
     return {
       mode: 'manual_entry',
@@ -92,7 +111,7 @@ const normalizeConfidence = (confidence = {}, source) => {
 };
 
 const normalizeIncomingReading = (payload = {}) => {
-  const source = ['manual', 'estimated', 'device'].includes(payload.source) ? payload.source : 'manual';
+  const source = ['manual', 'estimated', 'device', 'health_connect'].includes(payload.source) ? payload.source : 'manual';
   const sourceDetails = buildDefaultSourceDetails(source, payload.sourceDetails);
   const confidence = normalizeConfidence(payload.confidence, source);
 
@@ -135,6 +154,10 @@ const normalizeIncomingReading = (payload = {}) => {
 
   if (source === 'device') {
     normalized.sourceDetails.mode = 'band_plus_phone';
+  }
+
+  if (source === 'health_connect') {
+    normalized.sourceDetails.mode = 'health_connect';
   }
 
   return normalized;

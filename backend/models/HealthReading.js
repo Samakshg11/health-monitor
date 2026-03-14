@@ -57,13 +57,13 @@ const healthReadingSchema = new mongoose.Schema(
     },
     source: {
       type: String,
-      enum: ['manual', 'estimated', 'device'],
+      enum: ['manual', 'estimated', 'device', 'health_connect'],
       default: 'manual',
     },
     sourceDetails: {
       mode: {
         type: String,
-        enum: ['manual_entry', 'phone_only', 'band_plus_phone'],
+        enum: ['manual_entry', 'phone_only', 'band_plus_phone', 'health_connect'],
         default: 'manual_entry',
       },
       label: { type: String },

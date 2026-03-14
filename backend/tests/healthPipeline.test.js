@@ -58,6 +58,29 @@ test('normalizeIncomingReading preserves direct vitals for manual check-ins', ()
   assert.equal(normalized.sourceDetails.supportedMetrics.vitals, 'manual measurement');
 });
 
+test('normalizeIncomingReading preserves connected source metadata for health connect imports', () => {
+  const normalized = normalizeIncomingReading({
+    source: 'health_connect',
+    heartRate: { value: 68 },
+    steps: { value: 8123 },
+    sourceDetails: {
+      contributors: ['health-connect-adapter', 'android-phone'],
+      supportedMetrics: {
+        movement: 'platform-backed',
+        vitals: 'connected source',
+        recovery: 'connected source',
+      },
+    },
+  });
+
+  assert.equal(normalized.source, 'health_connect');
+  assert.equal(normalized.sourceDetails.mode, 'health_connect');
+  assert.equal(normalized.sourceDetails.label, 'Health Connect');
+  assert.equal(normalized.sourceDetails.supportedMetrics.vitals, 'connected source');
+  assert.deepEqual(normalized.heartRate, { value: 68 });
+  assert.deepEqual(normalized.steps, { value: 8123 });
+});
+
 test('shouldSoftenEstimatedAlert only softens estimated vital alerts', () => {
   assert.equal(shouldSoftenEstimatedAlert({ source: 'estimated' }, 'heartRate'), true);
   assert.equal(shouldSoftenEstimatedAlert({ source: 'estimated' }, 'stressLevel'), true);

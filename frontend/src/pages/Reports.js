@@ -42,7 +42,7 @@ const Reports = () => {
   const [days, setDays] = useState(7);
   const [stats, setStats] = useState(null);
   const [chartData, setChartData] = useState([]);
-  const [sourceMix, setSourceMix] = useState({ phone: 0, manual: 0, preview: 0 });
+  const [sourceMix, setSourceMix] = useState({ phone: 0, manual: 0, healthConnect: 0, preview: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -55,6 +55,7 @@ const Reports = () => {
         setSourceMix({
           phone: readings.filter((r) => r.source === 'estimated').length,
           manual: readings.filter((r) => r.source === 'manual').length,
+          healthConnect: readings.filter((r) => r.source === 'health_connect').length,
           preview: readings.filter((r) => r.source === 'device').length,
         });
         setChartData(readings.map((r) => ({
@@ -161,6 +162,7 @@ const Reports = () => {
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
                 <span className="tracker-pill">Phone sync {sourceMix.phone}</span>
                 <span className="tracker-pill">Manual check-ins {sourceMix.manual}</span>
+                <span className="tracker-pill">Health Connect {sourceMix.healthConnect}</span>
                 <span className="tracker-pill">Preview band {sourceMix.preview}</span>
               </div>
               {onboarding.preferredTrackingMode === 'phone_only' && (

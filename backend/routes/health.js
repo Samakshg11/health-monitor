@@ -9,6 +9,7 @@ const {
   shouldSoftenEstimatedAlert,
   normalizeIncomingReading,
 } = require('../utils/healthPipeline');
+const { mapHealthConnectPayload } = require('../utils/healthConnectAdapter');
 
 const router = express.Router();
 
@@ -181,6 +182,51 @@ router.post('/reading', protect, async (req, res) => {
     }
 
     res.status(201).json({ success: true, reading, alerts });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// @POST /api/health/import/health-connect - Adapter-ready Health Connect ingestion
+router.post('/import/health-connect', protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('subscription.plan');
+    const activePlan = getPlan(user?.subscription?.plan || 'starter');
+    const monthlyLimit = activePlan.limits.readingsPerMonth;
+    if (monthlyLimit !== null) {
+      const start = new Date();
+      start.setDate(1);
+      start.setHours(0, 0, 0, 0);
+      const usage = await HealthReading.countDocuments({
+        user: req.user._id,
+        recordedAt: { $gte: start },
+      });
+      if (usage >= monthlyLimit) {
+        return res.status(402).json({
+          success: false,
+          message: `Monthly reading limit reached for ${activePlan.label}. Upgrade to continue.`,
+          code: 'PLAN_LIMIT_REACHED',
+          usage: { used: usage, limit: monthlyLimit },
+        });
+      }
+    }
+
+    const adaptedPayload = mapHealthConnectPayload(req.body);
+    const normalized = normalizeIncomingReading(adaptedPayload);
+
+    const reading = await HealthReading.create({
+      user: req.user._id,
+      ...normalized,
+    });
+
+    const io = req.app.get('io');
+    const alerts = await generateAlerts(reading, req.user._id, io);
+
+    if (io) {
+      io.to(req.user._id.toString()).emit('new_reading', reading);
+    }
+
+    res.status(201).json({ success: true, reading, alerts, importedVia: 'health_connect_adapter' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

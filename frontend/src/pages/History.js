@@ -83,6 +83,7 @@ const scoreSnapshot = (reading, trackingGoal) => {
 
 const sourceBadge = (reading) => {
   if (reading.source === 'manual') return 'Manual check-in';
+  if (reading.source === 'health_connect') return 'Health Connect';
   if (reading.sourceDetails?.mode === 'band_plus_phone') return 'Future band preview';
   return 'Phone sync';
 };

@@ -294,10 +294,16 @@ const Dashboard = () => {
   ];
 
   const statusTone = toneForStatus(latest?.heartRate?.status);
-  const sourceHeadline = sourceMode === 'band_plus_phone' ? 'Future band preview flow' : 'Phone-only tracking';
+  const sourceHeadline = sourceMode === 'band_plus_phone'
+    ? 'Future band preview flow'
+    : sourceMode === 'health_connect'
+      ? 'Health Connect flow'
+      : 'Phone-only tracking';
   const sourceSummary = sourceMode === 'band_plus_phone'
     ? `${sourceDetails?.primarySource || 'Band-preview sensors'} feed vitals, while ${sourceDetails?.movementSource || 'phone GPS'} helps refine activity.`
-    : `${sourceDetails?.movementSource || 'Phone motion and GPS'} power movement, while body vitals should come from manual check-ins until a stronger device source is connected.`;
+    : sourceMode === 'health_connect'
+      ? `${sourceDetails?.primarySource || 'Health Connect'} provides platform-backed movement and connected wellness data through the backend adapter path.`
+      : `${sourceDetails?.movementSource || 'Phone motion and GPS'} power movement, while body vitals should come from manual check-ins until a stronger device source is connected.`;
   const selectedGoal = goalCopy[onboarding.trackingGoal] || goalCopy.fitness;
   const selectedExperience = experienceCopy[onboarding.experienceLevel] || experienceCopy.beginner;
   const confidenceTier = sourceDetails?.confidenceTier || (latest?.confidence?.overall >= 78 ? 'high' : latest?.confidence?.overall >= 56 ? 'medium' : 'low');
