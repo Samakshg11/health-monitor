@@ -417,17 +417,34 @@ const Dashboard = () => {
     },
   ];
 
-  const statusTone = toneForStatus(latest?.heartRate?.status);
-  const sourceHeadline = sourceMode === 'band_plus_phone'
+  const statusTone = toneForStatus(bodyReading?.heartRate?.status ?? latest?.heartRate?.status);
+  const flowMode = movementReading?.source === 'health_connect'
+    ? 'health_connect'
+    : movementReading?.source === 'device'
+      ? 'band_plus_phone'
+      : movementReading && bodyReading
+        ? 'phone_plus_manual'
+        : bodySourceMode === 'manual_entry'
+          ? 'manual_entry'
+          : sourceMode;
+  const sourceHeadline = flowMode === 'band_plus_phone'
     ? 'Future band preview flow'
-    : sourceMode === 'health_connect'
+    : flowMode === 'health_connect'
       ? 'Health Connect flow'
-      : 'Phone-only tracking';
-  const sourceSummary = sourceMode === 'band_plus_phone'
-    ? `${sourceDetails?.primarySource || 'Band-preview sensors'} feed vitals, while ${sourceDetails?.movementSource || 'phone GPS'} helps refine activity.`
-    : sourceMode === 'health_connect'
-      ? `${sourceDetails?.primarySource || 'Health Connect'} provides platform-backed movement and connected wellness data through the backend adapter path.`
-      : `${sourceDetails?.movementSource || 'Phone motion and GPS'} power movement, while body vitals should come from manual check-ins until a stronger device source is connected.`;
+      : flowMode === 'phone_plus_manual'
+        ? 'Phone tracking + manual check-ins'
+        : flowMode === 'manual_entry'
+          ? 'Manual check-in'
+          : 'Phone-only tracking';
+  const sourceSummary = flowMode === 'band_plus_phone'
+    ? `${movementReading?.sourceDetails?.primarySource || 'Band-preview sensors'} feed vitals, while ${movementReading?.sourceDetails?.movementSource || 'phone GPS'} helps refine activity.`
+    : flowMode === 'health_connect'
+      ? `${movementReading?.sourceDetails?.primarySource || 'Health Connect'} provides platform-backed movement and connected wellness data through the backend adapter path.`
+      : flowMode === 'phone_plus_manual'
+        ? `${movementReading?.sourceDetails?.movementSource || 'Phone motion and GPS'} keep movement live, while manual check-ins update body vitals and recovery whenever you log them.`
+        : flowMode === 'manual_entry'
+          ? `${bodySourceDetails?.primarySource || 'Manual check-ins'} are currently driving this view. Start phone tracking if you want movement to update live through the day.`
+          : `${movementReading?.sourceDetails?.movementSource || 'Phone motion and GPS'} keep movement live, while stronger body signals come from manual check-ins or a connected source.`;
   const selectedGoal = goalCopy[onboarding.trackingGoal] || goalCopy.fitness;
   const selectedExperience = experienceCopy[onboarding.experienceLevel] || experienceCopy.beginner;
   const confidenceTier = sourceDetails?.confidenceTier || (latest?.confidence?.overall >= 78 ? 'high' : latest?.confidence?.overall >= 56 ? 'medium' : 'low');
@@ -436,10 +453,14 @@ const Dashboard = () => {
   const bodySupportedMetrics = bodySourceDetails?.supportedMetrics || {};
   const movementSupportedMetrics = movementReading?.sourceDetails?.supportedMetrics || {};
   const movementConfidence = movementReading?.confidence?.steps ?? movementReading?.confidence?.distance ?? movementReading?.confidence?.activeMinutes ?? movementReading?.confidence?.overall;
+  const flowContributors = Array.from(new Set([
+    ...(movementReading?.sourceDetails?.contributors || []),
+    ...(bodyReading?.sourceDetails?.contributors || []),
+  ]));
   const sourceStrengthSummary = [
-    `Movement ${supportedMetrics.movement || 'stronger'}`,
-    `Vitals ${supportedMetrics.vitals || 'estimated'}`,
-    `Recovery ${supportedMetrics.recovery || 'trend-based'}`,
+    `Movement ${movementSupportedMetrics.movement || supportedMetrics.movement || 'stronger'}`,
+    `Vitals ${bodySupportedMetrics.vitals || supportedMetrics.vitals || 'estimated'}`,
+    `Recovery ${bodySupportedMetrics.recovery || supportedMetrics.recovery || 'trend-based'}`,
   ];
   const showFirstRunState = tracking.ready && !tracking.enabled && !latest;
   const showWaitingForFirstSync = tracking.ready && tracking.enabled && !latest;
@@ -634,7 +655,7 @@ const Dashboard = () => {
             </div>
             <p className="tracker-flow-summary">{sourceSummary}</p>
             <div className="tracker-flow-steps">
-              {(sourceDetails?.contributors || ['history-model']).map((item) => (
+              {(flowContributors.length ? flowContributors : ['history-model']).map((item) => (
                 <span key={item}>{item.replace(/-/g, ' ')}</span>
               ))}
             </div>
@@ -649,9 +670,9 @@ const Dashboard = () => {
             <div className="panel-heading">
               <div>
                 <span className="eyebrow">Confidence</span>
-                <h3>{latest?.confidence?.overall ?? '—'}% overall</h3>
+                <h3>{movementConfidence ?? bodyReading?.confidence?.overall ?? latest?.confidence?.overall ?? '—'}% overall</h3>
               </div>
-              <span className="tracker-pill">{confidenceTierCopy[confidenceTier] || 'Moderate confidence'}</span>
+              <span className="tracker-pill">{confidenceTierCopy[confidenceTier] || confidenceTierCopy[bodyConfidenceTier] || 'Moderate confidence'}</span>
             </div>
             <div className="tracker-summary-rows">
               <div className="tracker-summary-row">
