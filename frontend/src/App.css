@@ -3580,6 +3580,18 @@ body {
   margin-bottom: 18px;
 }
 
+.tracker-device-intro-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.tracker-device-triptych {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
 .tracker-device-hero {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 240px;
@@ -3769,7 +3781,9 @@ body {
   .tracker-goals,
   .tracker-snapshot-grid,
   .tracker-device-grid,
-  .tracker-device-details { grid-template-columns: 1fr; }
+  .tracker-device-details,
+  .tracker-device-triptych,
+  .tracker-device-intro-grid { grid-template-columns: 1fr; }
   .tracker-vitals-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tracker-rings-grid,
   .tracker-highlight-grid,

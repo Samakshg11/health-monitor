@@ -206,14 +206,14 @@ const WearableSetup = () => {
       </div>
 
       <div className="page-content">
-        <section className="card" style={{ marginBottom: 18 }}>
+        <section className="card tracker-device-intro" style={{ marginBottom: 18 }}>
           <div className="panel-heading">
             <div>
               <span className="eyebrow">Your setup</span>
               <h3>{lens.title}</h3>
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+          <div className="tracker-device-intro-grid">
             <div>
               <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.08em', marginBottom: 8 }}>Current mode</div>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem', marginBottom: 8 }}>{modeLabel}</div>
@@ -227,7 +227,7 @@ const WearableSetup = () => {
           </div>
         </section>
 
-        <section className="tracker-device-details" style={{ marginBottom: 18 }}>
+        <section className="tracker-device-triptych" style={{ marginBottom: 18 }}>
           <div className="card">
             <div className="panel-heading">
               <div>
@@ -310,14 +310,14 @@ const WearableSetup = () => {
           </div>
         </section>
 
-        <section className="tracker-device-details">
-            <div className="card">
-              <div className="panel-heading">
-                <div>
-                  <span className="eyebrow">Free integrations</span>
-                  <h3>Recommended path</h3>
-                </div>
+        <section className="tracker-device-triptych">
+          <div className="card">
+            <div className="panel-heading">
+              <div>
+                <span className="eyebrow">Free integrations</span>
+                <h3>Recommended path</h3>
               </div>
+            </div>
             <div className="tracker-device-actions">
               <button type="button" className="btn btn-secondary btn-sm" style={{ width: 'auto' }} onClick={onPermissions}>
                 Check permissions
@@ -374,89 +374,89 @@ const WearableSetup = () => {
             </div>
           </div>
 
-            <div className="card">
-              <div className="panel-heading">
-                <div>
-                  <span className="eyebrow">Demo bridge</span>
-                  <h3>Health Connect mock importer</h3>
-                </div>
+          <div className="card">
+            <div className="panel-heading">
+              <div>
+                <span className="eyebrow">Demo bridge</span>
+                <h3>Health Connect mock importer</h3>
               </div>
+            </div>
+            <div className="tracker-diagnostics-list">
+              <div className="tracker-diagnostic-row">
+                <span>Status</span>
+                <strong>{latestHealthConnectImport ? 'Latest reading came from Health Connect' : 'Ready to import sample'}</strong>
+              </div>
+              <div className="tracker-diagnostic-row">
+                <span>Last import</span>
+                <strong>{latestHealthConnectImport?.recordedAt ? new Date(latestHealthConnectImport.recordedAt).toLocaleString() : 'No Health Connect sample yet'}</strong>
+              </div>
+              <div className="tracker-diagnostic-row">
+                <span>Bridge source</span>
+                <strong>{mockHealthConnectPayload.primarySource}</strong>
+              </div>
+              <div className="tracker-diagnostic-row">
+                <span>Sample movement</span>
+                <strong>{mockHealthConnectPayload.metrics.steps.toLocaleString()} steps · {mockHealthConnectPayload.metrics.distance} km</strong>
+              </div>
+              <div className="tracker-diagnostic-row">
+                <span>Sample vitals</span>
+                <strong>{mockHealthConnectPayload.metrics.heartRate} BPM · {mockHealthConnectPayload.metrics.spo2}% SpO₂</strong>
+              </div>
+              <div className="tracker-diagnostic-row">
+                <span>Sample recovery</span>
+                <strong>{mockHealthConnectPayload.metrics.sleepHours} hrs · {mockHealthConnectPayload.metrics.sleepScore}% sleep score</strong>
+              </div>
+            </div>
+            <p style={{ color: 'var(--text-secondary)', marginTop: 14, lineHeight: 1.7 }}>
+              This stays free: the button above sends a sample connected-source payload through your backend `Health Connect` adapter route, so you can demo an Android integration path without any paid aggregator.
+            </p>
+          </div>
+
+          <div className="card">
+            <div className="panel-heading">
+              <div>
+                <span className="eyebrow">Pipeline</span>
+                <h3>Current source path</h3>
+              </div>
+            </div>
+            {loading ? (
+              <p style={{ color: 'var(--text-secondary)' }}>Loading diagnostics...</p>
+            ) : (
               <div className="tracker-diagnostics-list">
                 <div className="tracker-diagnostic-row">
-                  <span>Status</span>
-                  <strong>{latestHealthConnectImport ? 'Latest reading came from Health Connect' : 'Ready to import sample'}</strong>
+                  <span>Primary source</span>
+                  <strong>{sourceDetails?.primarySource || 'Unknown'}</strong>
                 </div>
                 <div className="tracker-diagnostic-row">
-                  <span>Last import</span>
-                  <strong>{latestHealthConnectImport?.recordedAt ? new Date(latestHealthConnectImport.recordedAt).toLocaleString() : 'No Health Connect sample yet'}</strong>
+                  <span>Movement path</span>
+                  <strong>{sourceDetails?.movementSource || 'Unknown'}</strong>
                 </div>
                 <div className="tracker-diagnostic-row">
-                  <span>Bridge source</span>
-                  <strong>{mockHealthConnectPayload.primarySource}</strong>
+                  <span>Recovery path</span>
+                  <strong>{sourceDetails?.recoverySource || 'Unknown'}</strong>
                 </div>
                 <div className="tracker-diagnostic-row">
-                  <span>Sample movement</span>
-                  <strong>{mockHealthConnectPayload.metrics.steps.toLocaleString()} steps · {mockHealthConnectPayload.metrics.distance} km</strong>
+                  <span>Confidence tier</span>
+                  <strong>{confidenceTierCopy[confidenceTier] || 'Moderate confidence'}</strong>
                 </div>
                 <div className="tracker-diagnostic-row">
-                  <span>Sample vitals</span>
-                  <strong>{mockHealthConnectPayload.metrics.heartRate} BPM · {mockHealthConnectPayload.metrics.spo2}% SpO₂</strong>
+                  <span>Movement support</span>
+                  <strong>{supportedMetrics.movement || 'Unknown'}</strong>
                 </div>
                 <div className="tracker-diagnostic-row">
-                  <span>Sample recovery</span>
-                  <strong>{mockHealthConnectPayload.metrics.sleepHours} hrs · {mockHealthConnectPayload.metrics.sleepScore}% sleep score</strong>
+                  <span>Vitals support</span>
+                  <strong>{supportedMetrics.vitals || 'Unknown'}</strong>
+                </div>
+                <div className="tracker-diagnostic-row">
+                  <span>Recovery support</span>
+                  <strong>{supportedMetrics.recovery || 'Unknown'}</strong>
+                </div>
+                <div className="tracker-diagnostic-row">
+                  <span>Contributors</span>
+                  <strong>{(sourceDetails?.contributors || ['history-model']).join(', ')}</strong>
                 </div>
               </div>
-              <p style={{ color: 'var(--text-secondary)', marginTop: 14, lineHeight: 1.7 }}>
-                This stays free: the button above sends a sample connected-source payload through your backend `Health Connect` adapter route, so you can demo an Android integration path without any paid aggregator.
-              </p>
-            </div>
-
-            <div className="card">
-              <div className="panel-heading">
-                <div>
-                  <span className="eyebrow">Pipeline</span>
-                  <h3>Current source path</h3>
-                </div>
-              </div>
-              {loading ? (
-                <p style={{ color: 'var(--text-secondary)' }}>Loading diagnostics...</p>
-              ) : (
-                <div className="tracker-diagnostics-list">
-                  <div className="tracker-diagnostic-row">
-                    <span>Primary source</span>
-                    <strong>{sourceDetails?.primarySource || 'Unknown'}</strong>
-                  </div>
-                  <div className="tracker-diagnostic-row">
-                    <span>Movement path</span>
-                    <strong>{sourceDetails?.movementSource || 'Unknown'}</strong>
-                  </div>
-                  <div className="tracker-diagnostic-row">
-                    <span>Recovery path</span>
-                    <strong>{sourceDetails?.recoverySource || 'Unknown'}</strong>
-                  </div>
-                  <div className="tracker-diagnostic-row">
-                    <span>Confidence tier</span>
-                    <strong>{confidenceTierCopy[confidenceTier] || 'Moderate confidence'}</strong>
-                  </div>
-                  <div className="tracker-diagnostic-row">
-                    <span>Movement support</span>
-                    <strong>{supportedMetrics.movement || 'Unknown'}</strong>
-                  </div>
-                  <div className="tracker-diagnostic-row">
-                    <span>Vitals support</span>
-                    <strong>{supportedMetrics.vitals || 'Unknown'}</strong>
-                  </div>
-                  <div className="tracker-diagnostic-row">
-                    <span>Recovery support</span>
-                    <strong>{supportedMetrics.recovery || 'Unknown'}</strong>
-                  </div>
-                  <div className="tracker-diagnostic-row">
-                    <span>Contributors</span>
-                    <strong>{(sourceDetails?.contributors || ['history-model']).join(', ')}</strong>
-                  </div>
-                </div>
-              )}
+            )}
           </div>
         </section>
 
