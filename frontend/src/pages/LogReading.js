@@ -17,6 +17,8 @@ const checkInModes = {
       diastolic: ['72', '78', '82'],
       hydration: ['68', '76', '84'],
       sleepScore: ['72', '82', '90'],
+      sleepHours: ['6.4', '7.2', '8.1'],
+      stressLevel: ['22', '34', '46'],
     },
   },
   post_workout: {
@@ -33,6 +35,7 @@ const checkInModes = {
       activeMinutes: ['24', '42', '60'],
       cadence: ['152', '164', '176'],
       hydration: ['58', '68', '78'],
+      stressLevel: ['46', '58', '72'],
     },
   },
   evening: {
@@ -45,6 +48,8 @@ const checkInModes = {
       temperature: ['36.5', '36.7', '36.9'],
       hydration: ['62', '74', '86'],
       sleepScore: ['68', '79', '88'],
+      sleepHours: ['6.1', '7.0', '7.8'],
+      stressLevel: ['28', '42', '56'],
       activeMinutes: ['18', '36', '54'],
       steps: ['5200', '8600', '11800'],
     },
@@ -90,6 +95,8 @@ const inputGroups = [
     fields: [
       { name: 'hydration', label: 'Hydration', unit: '%', placeholder: '78', min: 0, max: 100 },
       { name: 'sleepScore', label: 'Sleep Score', unit: '%', placeholder: '82', min: 0, max: 100 },
+      { name: 'sleepHours', label: 'Sleep Hours', unit: 'hrs', placeholder: '7.2', min: 0, max: 24, step: '0.1' },
+      { name: 'stressLevel', label: 'Stress Level', unit: '%', placeholder: '34', min: 0, max: 100 },
     ],
   },
 ];
@@ -107,6 +114,8 @@ const initialForm = {
   activeMinutes: '',
   hydration: '',
   sleepScore: '',
+  sleepHours: '',
+  stressLevel: '',
   workoutMode: 'balanced',
   notes: '',
 };
@@ -148,6 +157,8 @@ const LogReading = () => {
       temperature: starter.temperature?.[1] || prev.temperature,
       hydration: starter.hydration?.[1] || prev.hydration,
       sleepScore: starter.sleepScore?.[1] || prev.sleepScore,
+      sleepHours: starter.sleepHours?.[1] || prev.sleepHours,
+      stressLevel: starter.stressLevel?.[1] || prev.stressLevel,
       systolic: starter.systolic?.[1] || prev.systolic,
       diastolic: starter.diastolic?.[1] || prev.diastolic,
       steps: starter.steps?.[1] || prev.steps,
@@ -172,6 +183,8 @@ const LogReading = () => {
     if (form.activeMinutes) payload.activeMinutes = { value: Number(form.activeMinutes) };
     if (form.hydration) payload.hydration = { value: Number(form.hydration) };
     if (form.sleepScore) payload.sleepScore = { value: Number(form.sleepScore) };
+    if (form.sleepHours) payload.sleepHours = { value: Number(form.sleepHours) };
+    if (form.stressLevel) payload.stressLevel = { value: Number(form.stressLevel) };
     if (form.workoutMode) payload.workoutMode = form.workoutMode;
     payload.source = 'manual';
     payload.sourceDetails = {
@@ -180,12 +193,12 @@ const LogReading = () => {
       deviceName: 'Manual entry',
       primarySource: `User-entered ${modeConfig.title.toLowerCase()}`,
       movementSource: payload.steps || payload.distance || payload.activeMinutes ? 'User-entered activity summary' : 'No movement metrics entered',
-      recoverySource: payload.sleepScore || payload.hydration ? 'User-entered wellness summary' : 'No recovery metrics entered',
+      recoverySource: payload.sleepScore || payload.sleepHours || payload.stressLevel || payload.hydration ? 'User-entered wellness summary' : 'No recovery metrics entered',
       confidenceTier: 'high',
       supportedMetrics: {
         movement: payload.steps || payload.distance || payload.activeMinutes ? 'manual summary' : 'not entered',
         vitals: payload.heartRate || payload.bloodPressure || payload.spo2 || payload.temperature ? 'manual measurement' : 'not entered',
-        recovery: payload.sleepScore || payload.hydration ? 'manual summary' : 'not entered',
+        recovery: payload.sleepScore || payload.sleepHours || payload.stressLevel || payload.hydration ? 'manual summary' : 'not entered',
       },
       contributors: ['manual-check-in', checkInMode.replace('_', '-')],
     };
