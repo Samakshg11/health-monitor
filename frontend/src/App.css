@@ -3394,6 +3394,58 @@ body {
   align-items: flex-end;
 }
 
+.tracker-quality-list {
+  display: grid;
+  gap: 12px;
+}
+
+.tracker-quality-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 220px) 88px;
+  gap: 14px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.04);
+}
+
+.tracker-quality-label {
+  color: var(--text-secondary);
+  text-transform: capitalize;
+}
+
+.tracker-quality-meter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.tracker-quality-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  overflow: hidden;
+}
+
+.tracker-quality-bar div {
+  height: 100%;
+  border-radius: inherit;
+}
+
+.tracker-quality-meter strong {
+  font-family: var(--font-display);
+  min-width: 48px;
+  text-align: right;
+}
+
+.tracker-quality-tone {
+  text-align: right;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+}
+
 .tracker-mini-chart-card,
 .tracker-trend-card {
   min-height: 100%;
@@ -3853,6 +3905,8 @@ body {
   .tracker-history-overview { grid-template-columns: 1fr; }
   .tracker-session-main,
   .tracker-session-footer { align-items: flex-start; }
+  .tracker-quality-row { grid-template-columns: 1fr; }
+  .tracker-quality-tone { text-align: left; }
   .tracker-control-actions { flex-direction: column; }
   .tracker-start-actions { flex-direction: column; }
   .checkin-actions { flex-direction: column; }

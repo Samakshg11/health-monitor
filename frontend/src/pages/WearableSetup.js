@@ -502,17 +502,20 @@ const WearableSetup = () => {
           {loading ? (
             <p style={{ color: 'var(--text-secondary)' }}>Loading diagnostics...</p>
           ) : (
-            <div className="tracker-diagnostics-list">
+            <div className="tracker-quality-list">
               {['heartRate', 'bloodPressure', 'spo2', 'steps', 'distance', 'sleepScore', 'stressLevel'].map((key) => {
                 const value = latest?.confidence?.[key];
                 const tone = confidenceTone(typeof value === 'number' ? value : 50);
                 return (
-                  <div key={key} className="tracker-diagnostic-row">
-                    <span>{key.replace(/([A-Z])/g, ' $1').trim()}</span>
-                    <div>
+                  <div key={key} className="tracker-quality-row">
+                    <span className="tracker-quality-label">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                    <div className="tracker-quality-meter">
+                      <div className="tracker-quality-bar">
+                        <div style={{ width: `${typeof value === 'number' ? value : 0}%`, background: tone.color }} />
+                      </div>
                       <strong>{typeof value === 'number' ? `${value}%` : '—'}</strong>
-                      <small style={{ color: tone.color }}>{tone.label}</small>
                     </div>
+                    <small className="tracker-quality-tone" style={{ color: tone.color }}>{tone.label}</small>
                   </div>
                 );
               })}
