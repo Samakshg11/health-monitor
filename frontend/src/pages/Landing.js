@@ -532,12 +532,13 @@ const Landing = () => {
 
         <div className="landing-cta">
           <Link to="/register" className="btn btn-primary landing-btn">
-            Start Free Workspace
+            Start Free Setup
           </Link>
           <Link to="/login" className="btn btn-secondary landing-btn">
             Open Existing Account
           </Link>
         </div>
+        <p className="landing-cta-note">Create your account, finish a quick setup, and start in phone-first mode without paid integrations.</p>
 
         <div className="landing-kpis">
           <div>
@@ -1042,7 +1043,7 @@ const Landing = () => {
                 </button>
               ) : (
                 <Link to="/register" className="btn btn-primary landing-btn">
-                  {plan.cta}
+                  Start Plan Setup
                 </Link>
               )}
             </article>
@@ -1123,13 +1124,13 @@ const Landing = () => {
 
       <section className="landing-final-cta landing-section">
         <h2>Launch reliable remote monitoring in your workflow today.</h2>
-        <p>Move faster with structured data, alert automation, and clear patient-level visibility.</p>
+        <p>Move faster with structured data, alert automation, and a guided setup that gets teams productive quickly.</p>
         <div className="landing-cta">
           <button type="button" className="btn btn-secondary landing-btn" onClick={() => setDemoOpen(true)}>
             Book Live Demo
           </button>
           <Link to="/register" className="btn btn-primary landing-btn">
-            Create Your Workspace
+            Start Free Setup
           </Link>
           <Link to="/login" className="btn btn-secondary landing-btn">
             Sign In

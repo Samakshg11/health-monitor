@@ -18,8 +18,8 @@ const Register = () => {
     setLoading(true);
     try {
       await register(form);
-      toast.success('Account created! Welcome to VitalWatch 🎉');
-      navigate('/dashboard');
+      toast.success('Account created! Let’s finish your setup.');
+      navigate('/welcome');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Registration failed');
     } finally {
@@ -43,7 +43,7 @@ const Register = () => {
         </div>
 
         <h2 className="auth-title">Create account</h2>
-        <p className="auth-subtitle">Start monitoring your health vitals today</p>
+        <p className="auth-subtitle">Create your account, then complete a quick 1-minute tracking setup.</p>
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
@@ -90,6 +90,10 @@ const Register = () => {
             {loading ? 'Creating account...' : 'Create Account'}
           </button>
         </form>
+
+        <p style={{ marginTop: 14, fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+          Next step after signup: choose your goal, tracking style, and phone-first preferences before entering the dashboard.
+        </p>
 
         <p className="auth-footer">
           Already have an account? <Link to="/login">Sign in</Link>
