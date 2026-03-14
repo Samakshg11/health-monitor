@@ -1,39 +1,108 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import { format, formatDistanceToNow } from 'date-fns';
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import { getLatestReading, getReadings, getFitnessToday, getBillingCurrent } from '../utils/api';
-import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-} from 'recharts';
-import { format } from 'date-fns';
+import { ProgressRing, TrackerIcon } from '../components/TrackerUI';
 
-const MetricCard = ({ icon, label, value, unit, status }) => (
-  <div className={`metric-card status-${status || 'normal'}`}>
-    <div className="metric-header">
-      <div className="metric-icon">{icon}</div>
-      <span className="metric-status">{status || 'normal'}</span>
-    </div>
-    <div className="metric-value">{value ?? '—'}</div>
-    <div className="metric-unit">{unit}</div>
-    <div className="metric-label">{label}</div>
-  </div>
-);
+const toneForStatus = (status) => {
+  if (status === 'critical') return { label: 'Attention', color: 'var(--accent-red)' };
+  if (status === 'warning') return { label: 'Elevated', color: 'var(--accent-yellow)' };
+  return { label: 'Stable', color: 'var(--accent-green)' };
+};
+
+const metricCards = (latest) => {
+  if (!latest) return [];
+
+  const heartRate = latest.heartRate;
+  const spo2 = latest.spo2;
+  const temp = latest.temperature;
+  const stress = latest.stressLevel;
+  const bloodPressure = latest.bloodPressure;
+  const sleepHours = latest.sleepHours;
+
+  return [
+    {
+      key: 'heart-rate',
+      icon: 'heart',
+      label: 'Heart rate',
+      value: heartRate?.value ?? '—',
+      unit: 'BPM',
+      trend: toneForStatus(heartRate?.status).label,
+      status: heartRate?.status,
+    },
+    {
+      key: 'oxygen',
+      icon: 'oxygen',
+      label: 'Blood oxygen',
+      value: spo2?.value ?? '—',
+      unit: '%',
+      trend: toneForStatus(spo2?.status).label,
+      status: spo2?.status,
+    },
+    {
+      key: 'temp',
+      icon: 'temperature',
+      label: 'Skin temp',
+      value: temp?.value ?? '—',
+      unit: '°C',
+      trend: toneForStatus(temp?.status).label,
+      status: temp?.status,
+    },
+    {
+      key: 'stress',
+      icon: 'stress',
+      label: 'Stress load',
+      value: stress?.value ?? '—',
+      unit: '%',
+      trend: toneForStatus(stress?.status).label,
+      status: stress?.status,
+    },
+    {
+      key: 'bp',
+      icon: 'pressure',
+      label: 'Blood pressure',
+      value: bloodPressure?.systolic ? `${bloodPressure.systolic}/${bloodPressure.diastolic}` : '—',
+      unit: 'mmHg',
+      trend: toneForStatus(bloodPressure?.status).label,
+      status: bloodPressure?.status,
+    },
+    {
+      key: 'sleep',
+      icon: 'sleep',
+      label: 'Sleep duration',
+      value: sleepHours?.value ?? '—',
+      unit: 'hrs',
+      trend: 'Last night',
+      status: 'normal',
+    },
+  ];
+};
 
 const CustomTooltip = ({ active, payload, label }) => {
-  if (active && payload && payload.length) {
-    return (
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', fontSize: '0.8rem' }}>
-        <p style={{ color: 'var(--text-muted)', marginBottom: 4 }}>{label}</p>
-        {payload.map((p) => (
-          <p key={p.dataKey} style={{ color: p.color }}>
-            {p.name}: <strong>{p.value}</strong>
-          </p>
-        ))}
-      </div>
-    );
-  }
-  return null;
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="tracker-tooltip">
+      <p>{label}</p>
+      {payload.map((item) => (
+        <div key={item.dataKey} style={{ color: item.color }}>
+          {item.name}: <strong>{item.value ?? '—'}</strong>
+        </div>
+      ))}
+    </div>
+  );
 };
 
 const Dashboard = () => {
@@ -49,7 +118,7 @@ const Dashboard = () => {
     try {
       const { data } = await getFitnessToday();
       setFitnessSummary(data.summary);
-    } catch (e) {}
+    } catch {}
   }, []);
 
   const loadData = useCallback(async () => {
@@ -59,222 +128,308 @@ const Dashboard = () => {
         getReadings({ limit: 20 }),
         getBillingCurrent(),
       ]);
+
       setLatest(latestRes.data.reading);
       setBillingSummary(billingRes.data);
+
       const readings = readingsRes.data.readings.reverse();
       setChartData(
-        readings.map((r) => ({
-          time: format(new Date(r.recordedAt), 'MM/dd HH:mm'),
-          heartRate: r.heartRate && r.heartRate.value,
-          spo2: r.spo2 && r.spo2.value,
-          temperature: r.temperature && r.temperature.value,
-          steps: r.steps && r.steps.value,
+        readings.map((reading) => ({
+          time: format(new Date(reading.recordedAt), 'HH:mm'),
+          heartRate: reading.heartRate?.value,
+          spo2: reading.spo2?.value,
+          temperature: reading.temperature?.value,
+          steps: reading.steps?.value,
         }))
       );
+
       await loadFitnessSummary();
-    } catch (e) {}
+    } catch {}
     setLoading(false);
   }, [loadFitnessSummary]);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   useEffect(() => {
-    if (socketReading) {
-      setLatest(socketReading);
-      setChartData((prev) => {
-        const point = {
-          time: format(new Date(socketReading.recordedAt), 'MM/dd HH:mm'),
-          heartRate: socketReading.heartRate && socketReading.heartRate.value,
-          spo2: socketReading.spo2 && socketReading.spo2.value,
-          temperature: socketReading.temperature && socketReading.temperature.value,
-          steps: socketReading.steps && socketReading.steps.value,
-        };
-        return [...prev.slice(-19), point];
-      });
-      loadFitnessSummary();
-    }
+    if (!socketReading) return;
+    setLatest(socketReading);
+    setChartData((prev) => {
+      const point = {
+        time: format(new Date(socketReading.recordedAt), 'HH:mm'),
+        heartRate: socketReading.heartRate?.value,
+        spo2: socketReading.spo2?.value,
+        temperature: socketReading.temperature?.value,
+        steps: socketReading.steps?.value,
+      };
+      return [...prev.slice(-19), point];
+    });
+    loadFitnessSummary();
   }, [socketReading, loadFitnessSummary]);
 
-  const hr = latest && latest.heartRate;
-  const bp = latest && latest.bloodPressure;
-  const spo2 = latest && latest.spo2;
-  const temp = latest && latest.temperature;
-  const steps = latest && latest.steps;
-  const sleep = latest && latest.sleepScore;
-  const sleepHours = latest && latest.sleepHours;
-  const stress = latest && latest.stressLevel;
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+  if (loading) {
+    return <div style={{ padding: 32, color: 'var(--text-secondary)' }}>Loading tracker...</div>;
+  }
 
-  if (loading) return <div style={{ padding: 32, color: 'var(--text-secondary)' }}>Loading dashboard...</div>;
+  const firstName = user?.name?.split(' ')[0] || 'there';
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Morning' : hour < 17 ? 'Afternoon' : 'Evening';
+  const totals = fitnessSummary?.totals;
+  const progress = fitnessSummary?.progress;
+  const stepGoalProgress = progress?.steps ?? 0;
+  const activeGoalProgress = progress?.activeMinutes ?? 0;
+  const hydrationGoalProgress = progress?.hydration ?? 0;
+  const recoveryScore = latest?.sleepScore?.value ?? 72;
+  const readinessScore = Math.max(
+    0,
+    Math.min(
+      100,
+      Math.round(
+        ((100 - (latest?.stressLevel?.value ?? 35)) * 0.35) +
+        ((latest?.sleepScore?.value ?? 75) * 0.4) +
+        ((progress?.activeMinutes ?? 45) * 0.25)
+      )
+    )
+  );
+  const currentMode = latest?.workoutMode || 'balanced';
+  const updateLabel = latest?.recordedAt ? formatDistanceToNow(new Date(latest.recordedAt), { addSuffix: true }) : 'Waiting for sync';
+  const billingUsageLabel = billingSummary?.usage?.readings?.limit === null
+    ? `${billingSummary?.usage?.readings?.used || 0} used`
+    : `${billingSummary?.usage?.readings?.used || 0}/${billingSummary?.usage?.readings?.limit || 0} used`;
+
+  const highlights = [
+    {
+      title: 'Move',
+      value: totals?.steps?.toLocaleString() || '—',
+      unit: 'steps',
+      detail: `${totals?.distance || '—'} km distance`,
+      icon: 'steps',
+    },
+    {
+      title: 'Burn',
+      value: totals?.calories || '—',
+      unit: 'kcal',
+      detail: `${totals?.activeMinutes || 0} active min`,
+      icon: 'calories',
+    },
+    {
+      title: 'Recover',
+      value: latest?.sleepHours?.value || '—',
+      unit: 'hrs',
+      detail: `${recoveryScore}% sleep score`,
+      icon: 'sleep',
+    },
+  ];
+
+  const statusTone = toneForStatus(latest?.heartRate?.status);
 
   return (
     <div>
-      <div className="page-header">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <h1>Good {greeting}, {user && user.name && user.name.split(' ')[0]} 👋</h1>
-            <p>Here's your health overview · {format(new Date(), 'EEEE, MMMM d')}</p>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span className="live-badge"><span className="live-dot" /> Live</span>
-          </div>
+      <div className="page-header tracker-header">
+        <div>
+          <span className="eyebrow">Daily summary</span>
+          <h1>{greeting}, {firstName}</h1>
+          <p>{format(new Date(), 'EEEE, MMMM d')} · Everything from your band and current session in one place.</p>
+        </div>
+        <div className="tracker-header-actions">
+          <span className="live-badge"><span className="live-dot" /> Syncing live</span>
+          <span className="tracker-sync-pill"><TrackerIcon name="clock" size={14} /> Updated {updateLabel}</span>
         </div>
       </div>
 
-      <div className="page-content">
-        <div className="card" style={{ marginBottom: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
-            <div>
-              <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>Real-Time Fitness Session</div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem' }}>Auto Tracker Stream Active</div>
-              <div style={{ marginTop: 6, color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
-                Entries sync automatically every few seconds while you are logged in.
+      <div className="page-content tracker-dashboard">
+        <section className="tracker-hero">
+          <div className="tracker-hero-main card">
+            <div className="tracker-hero-copy">
+              <span className="eyebrow">Readiness</span>
+              <h2>{readinessScore >= 75 ? 'Ready to push' : readinessScore >= 55 ? 'Solid training day' : 'Take a lighter approach'}</h2>
+              <p>
+                Recovery is {recoveryScore}% and your current load is {latest?.stressLevel?.value ?? '—'}%.
+                {' '}Mode is set to <strong style={{ textTransform: 'capitalize' }}>{currentMode}</strong>.
+              </p>
+              <div className="tracker-hero-badges">
+                <span className="tracker-pill"><TrackerIcon name="heart" size={14} /> {latest?.heartRate?.value ?? '—'} BPM</span>
+                <span className="tracker-pill"><TrackerIcon name="oxygen" size={14} /> {latest?.spo2?.value ?? '—'}% SpO2</span>
+                <span className="tracker-pill"><TrackerIcon name="temperature" size={14} /> {latest?.temperature?.value ?? '—'}°C</span>
+              </div>
+            </div>
+
+            <div className="tracker-hero-side">
+              <ProgressRing value={readinessScore} color="var(--accent-red)" label="Readiness" sublabel="today" />
+              <div className="tracker-hero-note">
+                <span style={{ color: statusTone.color }}>{statusTone.label}</span>
+                <small>Heart rate status right now</small>
               </div>
             </div>
           </div>
 
-          <div className="stats-grid" style={{ marginBottom: 0 }}>
-            <div className="stat-card">
-              <div className="stat-value">{fitnessSummary ? fitnessSummary.totals.steps.toLocaleString() : '—'}</div>
-              <div className="stat-label">Steps Today</div>
+          <div className="tracker-hero-stack">
+            <div className="card tracker-stack-card">
+              <div className="stack-card-top">
+                <span className="eyebrow">Plan</span>
+                <Link to="/billing">Manage</Link>
+              </div>
+              <strong>{billingSummary?.subscription?.plan || 'starter'} plan</strong>
+              <small>{billingUsageLabel}</small>
             </div>
-            <div className="stat-card">
-              <div className="stat-value">{fitnessSummary ? fitnessSummary.totals.calories : '—'}</div>
-              <div className="stat-label">Calories Today</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-value">{fitnessSummary ? fitnessSummary.totals.distance : '—'}</div>
-              <div className="stat-label">Distance (km)</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-value">{fitnessSummary ? fitnessSummary.totals.activeMinutes : '—'}</div>
-              <div className="stat-label">Active Minutes</div>
+            <div className="card tracker-stack-card">
+              <div className="stack-card-top">
+                <span className="eyebrow">Alerts</span>
+                <Link to="/alerts">Open</Link>
+              </div>
+              <strong>{liveAlerts.length > 0 ? `${liveAlerts.length} live` : 'All clear'}</strong>
+              <small>{liveAlerts[0]?.message || 'No recent abnormal readings'}</small>
             </div>
           </div>
+        </section>
 
-          {fitnessSummary && (
-            <div style={{ marginTop: 10, color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
-              Goal progress: {fitnessSummary.progress.steps}% steps · {fitnessSummary.progress.activeMinutes}% active minutes · {fitnessSummary.progress.hydration}% hydration
-            </div>
-          )}
-        </div>
-
-        {billingSummary && (
-          <div className="card" style={{ marginBottom: 20 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+        <section className="tracker-goals">
+          <div className="card tracker-rings-panel">
+            <div className="panel-heading">
               <div>
-                <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>Subscription</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', textTransform: 'capitalize' }}>
-                  {billingSummary.subscription?.plan || 'starter'} plan
-                </div>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
-                  Status: {billingSummary.subscription?.status || 'active'}
-                </div>
+                <span className="eyebrow">Goals</span>
+                <h3>Close your rings</h3>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>Readings Usage</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem' }}>
-                  {billingSummary.usage?.readings?.used || 0}
-                  {billingSummary.usage?.readings?.limit === null
-                    ? ' / Unlimited'
-                    : ` / ${billingSummary.usage?.readings?.limit || 0}`}
-                </div>
-                <Link to="/billing" style={{ color: 'var(--accent-red)', fontSize: '0.82rem' }}>Manage plan →</Link>
+              <Link to="/profile">Adjust goals</Link>
+            </div>
+            <div className="tracker-rings-grid">
+              <div className="tracker-ring-card">
+                <ProgressRing value={stepGoalProgress} color="var(--accent-red)" label="Steps" sublabel={`${totals?.steps?.toLocaleString() || 0}`} compact />
+              </div>
+              <div className="tracker-ring-card">
+                <ProgressRing value={activeGoalProgress} color="var(--accent-blue)" label="Active" sublabel={`${totals?.activeMinutes || 0} min`} compact />
+              </div>
+              <div className="tracker-ring-card">
+                <ProgressRing value={hydrationGoalProgress} color="var(--accent-green)" label="Hydration" sublabel={`${hydrationGoalProgress}%`} compact />
               </div>
             </div>
           </div>
-        )}
 
-        {liveAlerts.length > 0 && (
-          <div style={{ background: 'rgba(230,57,70,0.08)', border: '1px solid rgba(230,57,70,0.3)', borderRadius: 12, padding: '12px 18px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span>🚨</span>
-            <span style={{ fontSize: '0.85rem' }}>
-              <strong style={{ color: 'var(--accent-red)' }}>{liveAlerts.length} new alert{liveAlerts.length > 1 ? 's' : ''}</strong>
-              {' — '}{liveAlerts[0].message}
-            </span>
-            <Link to="/alerts" style={{ marginLeft: 'auto', color: 'var(--accent-red)', fontSize: '0.8rem' }}>View all →</Link>
+          <div className="tracker-highlight-grid">
+            {highlights.map((item) => (
+              <article key={item.title} className="card tracker-highlight-card">
+                <div className="tracker-highlight-icon"><TrackerIcon name={item.icon} size={18} /></div>
+                <span className="eyebrow">{item.title}</span>
+                <strong>{item.value} <small>{item.unit}</small></strong>
+                <p>{item.detail}</p>
+              </article>
+            ))}
           </div>
-        )}
+        </section>
 
-        {latest ? (
-          <div className="metrics-grid">
-            <MetricCard icon="❤️" label="Heart Rate" value={hr && hr.value} unit="BPM" status={hr && hr.status} />
-            <MetricCard icon="🫀" label="Blood Pressure" value={bp && bp.systolic ? (bp.systolic + '/' + bp.diastolic) : null} unit="mmHg" status={bp && bp.status} />
-            <MetricCard icon="🫁" label="SpO₂" value={spo2 && spo2.value} unit="%" status={spo2 && spo2.status} />
-            <MetricCard icon="🌡️" label="Temperature" value={temp && temp.value} unit="°C" status={temp && temp.status} />
-            <MetricCard icon="👣" label="Steps" value={steps && steps.value && steps.value.toLocaleString()} unit="steps" status="normal" />
-            <MetricCard icon="😴" label="Sleep Score" value={sleep && sleep.value} unit="%" status={sleep && sleep.status} />
-            <MetricCard icon="🛌" label="Sleep Duration" value={sleepHours && sleepHours.value} unit="hrs" status="normal" />
-            <MetricCard icon="🧠" label="Stress Level" value={stress && stress.value} unit="%" status={stress && stress.status} />
-            <div className="metric-card">
-              <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: 8 }}>Last Updated</div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', fontWeight: 600 }}>{format(new Date(latest.recordedAt), 'HH:mm')}</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>{format(new Date(latest.recordedAt), 'MMM d, yyyy')}</div>
-              {latest.notes && <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 8, fontStyle: 'italic' }}>"{latest.notes}"</div>}
+        <section className="tracker-snapshot-grid">
+          <div className="card tracker-trend-card">
+            <div className="panel-heading">
+              <div>
+                <span className="eyebrow">Movement</span>
+                <h3>Today at a glance</h3>
+              </div>
+            </div>
+            <div className="tracker-summary-rows">
+              <div className="tracker-summary-row">
+                <span><TrackerIcon name="distance" size={16} /> Distance</span>
+                <strong>{totals?.distance || '—'} km</strong>
+              </div>
+              <div className="tracker-summary-row">
+                <span><TrackerIcon name="calories" size={16} /> Calories</span>
+                <strong>{totals?.calories || '—'} kcal</strong>
+              </div>
+              <div className="tracker-summary-row">
+                <span><TrackerIcon name="sleep" size={16} /> Sleep</span>
+                <strong>{latest?.sleepHours?.value || '—'} hrs</strong>
+              </div>
+              <div className="tracker-summary-row">
+                <span><TrackerIcon name="stress" size={16} /> Stress</span>
+                <strong>{latest?.stressLevel?.value || '—'}%</strong>
+              </div>
             </div>
           </div>
-        ) : (
-          <div className="card" style={{ marginBottom: 24 }}>
-            <div className="empty-state">
-              <div className="empty-state-icon">📋</div>
-              <h3>Starting tracker stream...</h3>
-              <p style={{ marginBottom: 16, fontSize: '0.85rem' }}>Your first automatic reading will appear shortly.</p>
+
+          <div className="card tracker-mini-chart-card">
+            <div className="panel-heading">
+              <div>
+                <span className="eyebrow">Steps</span>
+                <h3>Recent cadence</h3>
+              </div>
+            </div>
+            <ResponsiveContainer width="100%" height={170}>
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="stepsFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#e63946" stopOpacity={0.38} />
+                    <stop offset="95%" stopColor="#e63946" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                <XAxis dataKey="time" tick={{ fill: '#71718f', fontSize: 10 }} />
+                <YAxis tick={{ fill: '#71718f', fontSize: 10 }} />
+                <Tooltip content={<CustomTooltip />} />
+                <Area type="monotone" dataKey="steps" name="steps" stroke="#e63946" fill="url(#stepsFill)" strokeWidth={2} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+
+        <section className="tracker-vitals-section">
+          <div className="panel-heading panel-heading-inline">
+            <div>
+              <span className="eyebrow">Vitals</span>
+              <h3>Live body signals</h3>
             </div>
           </div>
-        )}
+          <div className="tracker-vitals-grid">
+            {metricCards(latest).map((metric) => (
+              <article key={metric.key} className={`tracker-vital-card status-${metric.status || 'normal'}`}>
+                <div className="tracker-vital-top">
+                  <div className="tracker-vital-icon"><TrackerIcon name={metric.icon} size={18} /></div>
+                  <span>{metric.trend}</span>
+                </div>
+                <strong>{metric.value} <small>{metric.unit}</small></strong>
+                <p>{metric.label}</p>
+              </article>
+            ))}
+          </div>
+        </section>
 
         {chartData.length > 1 && (
-          <div className="charts-grid">
+          <section className="charts-grid tracker-chart-grid">
             <div className="chart-card">
-              <h3>❤️ Heart Rate Trend</h3>
+              <div className="panel-heading">
+                <div>
+                  <span className="eyebrow">Heart</span>
+                  <h3>Heart rate</h3>
+                </div>
+              </div>
               <ResponsiveContainer width="100%" height={180}>
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="time" tick={{ fill: '#555570', fontSize: 10 }} interval="preserveStartEnd" />
-                  <YAxis tick={{ fill: '#555570', fontSize: 10 }} domain={['auto', 'auto']} />
+                  <XAxis dataKey="time" tick={{ fill: '#71718f', fontSize: 10 }} interval="preserveStartEnd" />
+                  <YAxis tick={{ fill: '#71718f', fontSize: 10 }} domain={['auto', 'auto']} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Line type="monotone" dataKey="heartRate" name="BPM" stroke="#e63946" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="heartRate" name="BPM" stroke="#e63946" strokeWidth={2.4} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
             <div className="chart-card">
-              <h3>🫁 SpO₂ Trend</h3>
+              <div className="panel-heading">
+                <div>
+                  <span className="eyebrow">Recovery</span>
+                  <h3>Oxygen and temperature</h3>
+                </div>
+              </div>
               <ResponsiveContainer width="100%" height={180}>
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="time" tick={{ fill: '#555570', fontSize: 10 }} interval="preserveStartEnd" />
-                  <YAxis tick={{ fill: '#555570', fontSize: 10 }} domain={[85, 100]} />
+                  <XAxis dataKey="time" tick={{ fill: '#71718f', fontSize: 10 }} interval="preserveStartEnd" />
+                  <YAxis tick={{ fill: '#71718f', fontSize: 10 }} domain={['auto', 'auto']} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Line type="monotone" dataKey="spo2" name="%" stroke="#4ecdc4" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="spo2" name="SpO2" stroke="#4ecdc4" strokeWidth={2.2} dot={false} />
+                  <Line type="monotone" dataKey="temperature" name="Temp" stroke="#f39c12" strokeWidth={2.2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
-            <div className="chart-card">
-              <h3>🌡️ Temperature Trend</h3>
-              <ResponsiveContainer width="100%" height={180}>
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="time" tick={{ fill: '#555570', fontSize: 10 }} interval="preserveStartEnd" />
-                  <YAxis tick={{ fill: '#555570', fontSize: 10 }} domain={['auto', 'auto']} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Line type="monotone" dataKey="temperature" name="°C" stroke="#f39c12" strokeWidth={2} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="chart-card">
-              <h3>👣 Steps Trend</h3>
-              <ResponsiveContainer width="100%" height={180}>
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="time" tick={{ fill: '#555570', fontSize: 10 }} interval="preserveStartEnd" />
-                  <YAxis tick={{ fill: '#555570', fontSize: 10 }} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Line type="monotone" dataKey="steps" name="steps" stroke="#9b59b6" strokeWidth={2} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+          </section>
         )}
       </div>
     </div>

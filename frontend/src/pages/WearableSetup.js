@@ -2,17 +2,22 @@ import React, { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { getLatestReading } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import { ProgressRing, SignalBars, TrackerIcon } from '../components/TrackerUI';
 
 const confidenceTone = (value) => {
-  if (value >= 80) return { label: 'High', color: 'var(--accent-green)' };
-  if (value >= 60) return { label: 'Medium', color: 'var(--accent-yellow)' };
-  return { label: 'Low', color: 'var(--accent-red)' };
+  if (value >= 80) return { label: 'Excellent', color: 'var(--accent-green)' };
+  if (value >= 60) return { label: 'Good', color: 'var(--accent-yellow)' };
+  return { label: 'Weak', color: 'var(--accent-red)' };
 };
 
 const WearableSetup = () => {
   const { wearable, pairWearable, unpairWearable, requestSensorPermissions } = useAuth();
   const [latest, setLatest] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [wizardStep, setWizardStep] = useState(1);
+  const [scanStatus, setScanStatus] = useState('idle');
+  const [calibrationProgress, setCalibrationProgress] = useState(0);
 
   const loadLatest = async () => {
     try {
@@ -28,9 +33,23 @@ const WearableSetup = () => {
     return () => clearInterval(id);
   }, []);
 
-  const onPair = () => {
-    pairWearable();
-    toast.success('VitalBand X1 paired successfully');
+  const startWizard = () => {
+    setWizardOpen(true);
+    setWizardStep(1);
+    setScanStatus('idle');
+    setCalibrationProgress(0);
+  };
+
+  const closeWizard = () => {
+    setWizardOpen(false);
+    setWizardStep(1);
+    setScanStatus('idle');
+    setCalibrationProgress(0);
+  };
+
+  const onPermissions = async () => {
+    await requestSensorPermissions();
+    toast.success('Permission check completed');
   };
 
   const onUnpair = () => {
@@ -38,10 +57,25 @@ const WearableSetup = () => {
     toast.success('Device disconnected');
   };
 
-  const onPermissions = async () => {
-    await requestSensorPermissions();
-    toast.success('Permission check completed');
+  const runScan = () => {
+    setScanStatus('scanning');
+    setTimeout(() => setScanStatus('found'), 1400);
   };
+
+  const confirmPair = () => {
+    pairWearable();
+    toast.success('VitalBand X1 paired successfully');
+    setWizardStep(3);
+    setCalibrationProgress(20);
+  };
+
+  useEffect(() => {
+    if (!wizardOpen || wizardStep !== 3 || calibrationProgress >= 100) return undefined;
+    const id = setInterval(() => {
+      setCalibrationProgress((prev) => Math.min(100, prev + 16));
+    }, 450);
+    return () => clearInterval(id);
+  }, [wizardOpen, wizardStep, calibrationProgress]);
 
   const syncHealth = useMemo(() => {
     const overall = latest?.confidence?.overall;
@@ -54,122 +88,208 @@ const WearableSetup = () => {
   const syncLabel = wearable.lastSyncStatus === 'ok'
     ? 'Connected and syncing'
     : wearable.lastSyncStatus === 'error'
-      ? 'Connected, sync retrying'
+      ? 'Connected, retrying'
       : wearable.paired
         ? 'Connected, waiting for first sync'
         : 'Not connected';
+  const signalStrength = wearable.paired ? (wearable.lastSyncStatus === 'error' ? 1 : latest ? 4 : 3) : 0;
 
   return (
     <div>
-      <div className="page-header">
-        <h1>Wearable Setup</h1>
-        <p>Pair and monitor your VitalBand X1 connection, sync quality, and sensor confidence.</p>
+      <div className="page-header tracker-header">
+        <div>
+          <span className="eyebrow">Device</span>
+          <h1>VitalBand X1</h1>
+          <p>Make the band feel real: battery, sync quality, permissions, and calibration all in one device surface.</p>
+        </div>
       </div>
 
       <div className="page-content">
-        <div className="card" style={{ marginBottom: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-            <div>
-              <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.08em' }}>Device</div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.35rem' }}>VitalBand X1</div>
-              <div style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', marginTop: 4 }}>
-                Status: {syncLabel}
+        <section className="tracker-device-grid">
+          <div className="card tracker-device-hero">
+            <div className="tracker-device-copy">
+              <span className="eyebrow">Connection</span>
+              <h2>{syncLabel}</h2>
+              <p>Source mode is <strong style={{ textTransform: 'capitalize' }}>{source}</strong>. Last sync: {lastSync}.</p>
+              <div className="tracker-hero-badges">
+                <span className="tracker-pill"><TrackerIcon name="sync" size={14} /> {wearable.paired ? 'Band paired' : 'Awaiting pair'}</span>
+                <span className="tracker-pill"><TrackerIcon name="signal" size={14} /> <SignalBars strength={signalStrength} /></span>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+
+            <div className="tracker-device-visual">
+              <div className="tracker-device-shell">
+                <div className="tracker-device-screen">
+                  <TrackerIcon name="heart" size={20} />
+                  <strong>{latest?.heartRate?.value || '--'}</strong>
+                  <small>BPM live</small>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="tracker-device-side">
+            <div className="card tracker-device-stat">
+              <ProgressRing value={wearable.paired ? wearable.battery : 0} color="var(--accent-green)" label="Battery" sublabel={wearable.paired ? 'band' : 'offline'} compact />
+            </div>
+            <div className="card tracker-device-stat">
+              <ProgressRing value={wearable.paired ? syncHealth.value : 0} color={syncHealth.color} label="Signal quality" sublabel={wearable.paired ? syncHealth.label : 'offline'} compact />
+            </div>
+          </div>
+        </section>
+
+        <section className="tracker-device-details">
+          <div className="card">
+            <div className="panel-heading">
+              <div>
+                <span className="eyebrow">Controls</span>
+                <h3>Band setup</h3>
+              </div>
+            </div>
+            <div className="tracker-device-actions">
               <button type="button" className="btn btn-secondary btn-sm" style={{ width: 'auto' }} onClick={onPermissions}>
-                Check Permissions
+                Check permissions
               </button>
               {wearable.paired ? (
                 <button type="button" className="btn btn-secondary btn-sm" style={{ width: 'auto' }} onClick={onUnpair}>
-                  Disconnect
+                  Disconnect band
                 </button>
               ) : (
-                <button type="button" className="btn btn-primary btn-sm" style={{ width: 'auto' }} onClick={onPair}>
-                  Pair Device
+                <button type="button" className="btn btn-primary btn-sm" style={{ width: 'auto' }} onClick={startWizard}>
+                  Pair new band
                 </button>
               )}
             </div>
-          </div>
-        </div>
 
-        <div className="stats-grid" style={{ marginBottom: 20 }}>
-          <div className="stat-card">
-            <div className="stat-value">{wearable.paired ? `${wearable.battery}%` : '—'}</div>
-            <div className="stat-label">Battery</div>
+            <div className="tracker-device-checklist">
+              <div className="tracker-check-item">
+                <span>Bluetooth pairing</span>
+                <strong>{wearable.paired ? 'Ready' : 'Pending'}</strong>
+              </div>
+              <div className="tracker-check-item">
+                <span>Location</span>
+                <strong style={{ textTransform: 'capitalize' }}>{wearable.sensorStatus.geoPermission}</strong>
+              </div>
+              <div className="tracker-check-item">
+                <span>Motion</span>
+                <strong style={{ textTransform: 'capitalize' }}>{wearable.sensorStatus.motionPermission}</strong>
+              </div>
+              <div className="tracker-check-item">
+                <span>Live feed</span>
+                <strong>{wearable.sensorStatus.hasGeo || wearable.sensorStatus.hasMotion ? 'Streaming' : 'Idle'}</strong>
+              </div>
+            </div>
           </div>
-          <div className="stat-card">
-            <div className="stat-value" style={{ color: syncHealth.color }}>{wearable.paired ? syncHealth.value : '—'}</div>
-            <div className="stat-label">Sync Confidence</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-value" style={{ textTransform: 'capitalize' }}>{wearable.paired ? source : '—'}</div>
-            <div className="stat-label">Data Source</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-value" style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>{wearable.paired ? lastSync : '—'}</div>
-            <div className="stat-label">Last Sync</div>
-          </div>
-        </div>
 
-        <div className="card" style={{ marginBottom: 20 }}>
-          <h3 style={{ marginBottom: 12 }}>Setup Checklist</h3>
-          <div className="stats-grid" style={{ marginBottom: 0 }}>
-            <div className="stat-card">
-              <div className="stat-value" style={{ fontSize: '1rem' }}>{wearable.paired ? 'Done' : 'Pending'}</div>
-              <div className="stat-label">Device Pairing</div>
+          <div className="card">
+            <div className="panel-heading">
+              <div>
+                <span className="eyebrow">Diagnostics</span>
+                <h3>Sensor quality</h3>
+              </div>
             </div>
-            <div className="stat-card">
-              <div className="stat-value" style={{ fontSize: '1rem', textTransform: 'capitalize' }}>{wearable.sensorStatus.geoPermission}</div>
-              <div className="stat-label">Location Permission</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-value" style={{ fontSize: '1rem', textTransform: 'capitalize' }}>{wearable.sensorStatus.motionPermission}</div>
-              <div className="stat-label">Motion Permission</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-value" style={{ fontSize: '1rem' }}>{wearable.sensorStatus.hasGeo || wearable.sensorStatus.hasMotion ? 'Live' : 'Idle'}</div>
-              <div className="stat-label">Sensor Feed</div>
-            </div>
+            {loading ? (
+              <p style={{ color: 'var(--text-secondary)' }}>Loading diagnostics...</p>
+            ) : (
+              <div className="tracker-diagnostics-list">
+                {['heartRate', 'bloodPressure', 'spo2', 'steps', 'distance', 'sleepScore', 'stressLevel'].map((key) => {
+                  const value = latest?.confidence?.[key];
+                  const tone = confidenceTone(typeof value === 'number' ? value : 50);
+                  return (
+                    <div key={key} className="tracker-diagnostic-row">
+                      <span>{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                      <div>
+                        <strong>{typeof value === 'number' ? `${value}%` : '—'}</strong>
+                        <small style={{ color: tone.color }}>{tone.label}</small>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
-        </div>
-
-        <div className="card">
-          <h3 style={{ marginBottom: 12 }}>Sensor Confidence</h3>
-          {loading ? (
-            <p style={{ color: 'var(--text-secondary)' }}>Loading wearable diagnostics...</p>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Metric</th>
-                    <th>Confidence</th>
-                    <th>Quality</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {['heartRate', 'bloodPressure', 'spo2', 'steps', 'distance', 'sleepScore', 'stressLevel'].map((key) => {
-                    const value = latest?.confidence?.[key];
-                    const tone = confidenceTone(typeof value === 'number' ? value : 50);
-                    return (
-                      <tr key={key}>
-                        <td style={{ textTransform: 'capitalize' }}>{key.replace(/([A-Z])/g, ' $1').trim()}</td>
-                        <td>{typeof value === 'number' ? `${value}%` : '—'}</td>
-                        <td style={{ color: tone.color }}>{tone.label}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-          <p style={{ marginTop: 10, color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-            Confidence is higher when motion and location signals are available and the wearable is paired.
-            Low-confidence vitals are softened in alerts for safer triage.
-          </p>
-        </div>
+        </section>
       </div>
+
+      {wizardOpen && (
+        <div className="landing-modal-overlay" onClick={closeWizard}>
+          <div className="landing-modal tracker-pair-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560 }}>
+            <span className="eyebrow">Pairing wizard</span>
+            <h3>Connect your VitalBand</h3>
+            <p>Step {wizardStep} of 3. Scan nearby, confirm permissions, then calibrate motion and heart rate.</p>
+
+            <div className="tracker-progress-bar">
+              <div style={{ width: `${(wizardStep / 3) * 100}%` }} />
+            </div>
+
+            {wizardStep === 1 && (
+              <div>
+                <div className="tracker-wizard-panel">
+                  <div className="tracker-device-shell mini">
+                    <div className="tracker-device-screen">
+                      <TrackerIcon name="device" size={18} />
+                      <strong>X1</strong>
+                      <small>{scanStatus === 'found' ? 'Found nearby' : scanStatus === 'scanning' ? 'Searching...' : 'Ready to scan'}</small>
+                    </div>
+                  </div>
+                </div>
+                <div className="landing-modal-actions">
+                  <button type="button" className="btn btn-secondary" onClick={closeWizard}>Cancel</button>
+                  {scanStatus !== 'found' ? (
+                    <button type="button" className="btn btn-primary" onClick={runScan}>
+                      {scanStatus === 'scanning' ? 'Scanning...' : 'Start scan'}
+                    </button>
+                  ) : (
+                    <button type="button" className="btn btn-primary" onClick={() => setWizardStep(2)}>
+                      Continue
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {wizardStep === 2 && (
+              <div>
+                <div className="tracker-wizard-checks">
+                  <div className="tracker-check-item">
+                    <span>Location access</span>
+                    <strong style={{ textTransform: 'capitalize' }}>{wearable.sensorStatus.geoPermission}</strong>
+                  </div>
+                  <div className="tracker-check-item">
+                    <span>Motion access</span>
+                    <strong style={{ textTransform: 'capitalize' }}>{wearable.sensorStatus.motionPermission}</strong>
+                  </div>
+                </div>
+                <div className="landing-modal-actions">
+                  <button type="button" className="btn btn-secondary" onClick={() => setWizardStep(1)}>Back</button>
+                  <button type="button" className="btn btn-secondary" onClick={onPermissions}>Refresh permissions</button>
+                  <button type="button" className="btn btn-primary" onClick={confirmPair}>Pair band</button>
+                </div>
+              </div>
+            )}
+
+            {wizardStep === 3 && (
+              <div>
+                <div className="tracker-wizard-panel">
+                  <ProgressRing value={calibrationProgress} color="var(--accent-blue)" label="Calibrating" sublabel={calibrationProgress >= 100 ? 'ready' : 'hold still'} compact />
+                  <p style={{ color: 'var(--text-secondary)', marginTop: 14 }}>
+                    {calibrationProgress >= 100
+                      ? 'Calibration complete. The band is now ready to stream live movement and vitals.'
+                      : 'Keep the device close while the tracker tunes movement and heart-rate confidence.'}
+                  </p>
+                </div>
+                <div className="landing-modal-actions">
+                  {calibrationProgress >= 100 ? (
+                    <button type="button" className="btn btn-primary" onClick={closeWizard}>Finish</button>
+                  ) : (
+                    <button type="button" className="btn btn-secondary" onClick={closeWizard}>Close</button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,18 +1,28 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { getReadings, deleteReading } from '../utils/api';
-import { format } from 'date-fns';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { format, isToday, isYesterday } from 'date-fns';
 import toast from 'react-hot-toast';
+import { getReadings, deleteReading } from '../utils/api';
+import { TrackerIcon } from '../components/TrackerUI';
 
-const StatusDot = ({ status }) => (
-  <span className={`status-dot dot-${status || 'normal'}`} />
-);
+const formatDayLabel = (value) => {
+  const date = new Date(value);
+  if (isToday(date)) return 'Today';
+  if (isYesterday(date)) return 'Yesterday';
+  return format(date, 'EEEE, MMM d');
+};
+
+const statusLabel = (status) => {
+  if (status === 'critical') return 'Attention';
+  if (status === 'warning') return 'Elevated';
+  return 'Stable';
+};
 
 const History = () => {
   const [readings, setReadings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const LIMIT = 15;
+  const LIMIT = 12;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -20,17 +30,19 @@ const History = () => {
       const { data } = await getReadings({ page, limit: LIMIT });
       setReadings(data.readings);
       setTotal(data.pagination.total);
-    } catch (e) {}
+    } catch {}
     setLoading(false);
   }, [page]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this reading?')) return;
+    if (!window.confirm('Delete this session snapshot?')) return;
     try {
       await deleteReading(id);
-      toast.success('Reading deleted');
+      toast.success('Snapshot removed');
       load();
     } catch {
       toast.error('Failed to delete');
@@ -39,100 +51,127 @@ const History = () => {
 
   const totalPages = Math.ceil(total / LIMIT);
 
+  const groupedReadings = useMemo(() => readings.reduce((groups, reading) => {
+    const key = format(new Date(reading.recordedAt), 'yyyy-MM-dd');
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(reading);
+    return groups;
+  }, {}), [readings]);
+
+  const overview = useMemo(() => {
+    if (!readings.length) return null;
+    const steps = readings.reduce((sum, reading) => sum + (reading.steps?.value || 0), 0);
+    const activeSessions = readings.filter((reading) => (reading.steps?.value || 0) > 120).length;
+    const elevatedReadings = readings.filter((reading) => (
+      ['warning', 'critical'].includes(reading.heartRate?.status) ||
+      ['warning', 'critical'].includes(reading.spo2?.status) ||
+      ['warning', 'critical'].includes(reading.temperature?.status)
+    )).length;
+    return { steps, activeSessions, elevatedReadings };
+  }, [readings]);
+
   return (
     <div>
-      <div className="page-header">
-        <h1>Reading History</h1>
-        <p>All your logged health and fitness readings · {total} total records</p>
+      <div className="page-header tracker-header">
+        <div>
+          <span className="eyebrow">Activity log</span>
+          <h1>Your recent days</h1>
+          <p>Browse snapshots the way a tracker app would: by day, time, and session feel instead of raw tables.</p>
+        </div>
       </div>
+
       <div className="page-content">
-        <div className="card">
+        {overview && (
+          <section className="tracker-history-overview">
+            <div className="card tracker-highlight-card">
+              <div className="tracker-highlight-icon"><TrackerIcon name="steps" size={18} /></div>
+              <span className="eyebrow">Movement</span>
+              <strong>{overview.steps.toLocaleString()} <small>steps</small></strong>
+              <p>Across the latest {readings.length} snapshots</p>
+            </div>
+            <div className="card tracker-highlight-card">
+              <div className="tracker-highlight-icon"><TrackerIcon name="activity" size={18} /></div>
+              <span className="eyebrow">Sessions</span>
+              <strong>{overview.activeSessions} <small>active</small></strong>
+              <p>Moments with elevated movement</p>
+            </div>
+            <div className="card tracker-highlight-card">
+              <div className="tracker-highlight-icon"><TrackerIcon name="alerts" size={18} /></div>
+              <span className="eyebrow">Checks</span>
+              <strong>{overview.elevatedReadings} <small>flagged</small></strong>
+              <p>Readings that deserve a second look</p>
+            </div>
+          </section>
+        )}
+
+        <section className="tracker-history-list">
           {loading ? (
-            <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: 40 }}>Loading...</p>
+            <div className="card"><p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: 40 }}>Loading activity...</p></div>
           ) : readings.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-state-icon">📋</div>
-              <h3>No readings found</h3>
-              <p>Auto-tracker readings will appear here once sync starts.</p>
+            <div className="card">
+              <div className="empty-state">
+                <div className="empty-state-icon">◎</div>
+                <h3>No activity yet</h3>
+                <p>Your first synced sessions will appear here.</p>
+              </div>
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Date & Time</th>
-                    <th>Heart Rate</th>
-                    <th>Blood Pressure</th>
-                    <th>SpO₂</th>
-                    <th>Temp</th>
-                    <th>Steps</th>
-                    <th>Calories</th>
-                    <th>Distance</th>
-                    <th>Mode</th>
-                    <th>Hydration</th>
-                    <th>Sleep</th>
-                    <th>Sleep Hrs</th>
-                    <th>Stress</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {readings.map((r) => (
-                    <tr key={r._id}>
-                      <td style={{ whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>
-                        {format(new Date(r.recordedAt), 'MMM d, yyyy')}<br />
-                        <small>{format(new Date(r.recordedAt), 'HH:mm')}</small>
-                      </td>
-                      <td>
-                        {r.heartRate && r.heartRate.value ? (
-                          <><StatusDot status={r.heartRate.status} />{r.heartRate.value} BPM</>
-                        ) : '—'}
-                      </td>
-                      <td>
-                        {r.bloodPressure && r.bloodPressure.systolic ? (
-                          <><StatusDot status={r.bloodPressure.status} />{r.bloodPressure.systolic}/{r.bloodPressure.diastolic}</>
-                        ) : '—'}
-                      </td>
-                      <td>
-                        {r.spo2 && r.spo2.value ? (
-                          <><StatusDot status={r.spo2.status} />{r.spo2.value}%</>
-                        ) : '—'}
-                      </td>
-                      <td>
-                        {r.temperature && r.temperature.value ? (
-                          <><StatusDot status={r.temperature.status} />{r.temperature.value}°C</>
-                        ) : '—'}
-                      </td>
-                      <td>{r.steps && r.steps.value ? r.steps.value.toLocaleString() : '—'}</td>
-                      <td>{r.calories && r.calories.value ? r.calories.value : '—'}</td>
-                      <td>{r.distance && r.distance.value ? `${r.distance.value} km` : '—'}</td>
-                      <td style={{ textTransform: 'capitalize' }}>{r.workoutMode || 'balanced'}</td>
-                      <td>{r.hydration && r.hydration.value ? `${r.hydration.value}%` : '—'}</td>
-                      <td>{r.sleepScore && r.sleepScore.value ? `${r.sleepScore.value}%` : '—'}</td>
-                      <td>{r.sleepHours && r.sleepHours.value ? `${r.sleepHours.value} h` : '—'}</td>
-                      <td>
-                        {r.stressLevel && r.stressLevel.value ? (
-                          <><StatusDot status={r.stressLevel.status} />{r.stressLevel.value}%</>
-                        ) : '—'}
-                      </td>
-                      <td>
-                        <button onClick={() => handleDelete(r._id)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1rem' }} title="Delete">🗑️</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+            Object.entries(groupedReadings).map(([day, items]) => (
+              <article key={day} className="tracker-day-group">
+                <div className="tracker-day-header">
+                  <div>
+                    <span className="eyebrow">Day</span>
+                    <h3>{formatDayLabel(day)}</h3>
+                  </div>
+                  <small>{items.length} snapshot{items.length > 1 ? 's' : ''}</small>
+                </div>
+                <div className="tracker-session-list">
+                  {items.map((reading) => (
+                    <div key={reading._id} className="card tracker-session-card">
+                      <div className="tracker-session-main">
+                        <div>
+                          <div className="tracker-session-time">{format(new Date(reading.recordedAt), 'h:mm a')}</div>
+                          <div className="tracker-session-mode">{reading.workoutMode || 'balanced'} mode</div>
+                        </div>
+                        <span className={`tracker-session-status status-${reading.heartRate?.status || 'normal'}`}>
+                          {statusLabel(reading.heartRate?.status)}
+                        </span>
+                      </div>
 
-          {totalPages > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 24 }}>
-              <button className="btn btn-secondary btn-sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>← Prev</button>
-              <span style={{ padding: '8px 16px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Page {page} of {totalPages}</span>
-              <button className="btn btn-secondary btn-sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next →</button>
-            </div>
+                      <div className="tracker-session-metrics">
+                        <span><TrackerIcon name="heart" size={14} /> {reading.heartRate?.value || '—'} BPM</span>
+                        <span><TrackerIcon name="oxygen" size={14} /> {reading.spo2?.value || '—'}%</span>
+                        <span><TrackerIcon name="temperature" size={14} /> {reading.temperature?.value || '—'}°C</span>
+                        <span><TrackerIcon name="steps" size={14} /> {(reading.steps?.value || 0).toLocaleString()} steps</span>
+                        <span><TrackerIcon name="distance" size={14} /> {reading.distance?.value || '—'} km</span>
+                        <span><TrackerIcon name="sleep" size={14} /> {reading.sleepHours?.value || '—'} hrs</span>
+                      </div>
+
+                      <div className="tracker-session-footer">
+                        <div className="tracker-session-tags">
+                          <span>Stress {reading.stressLevel?.value || '—'}%</span>
+                          <span>Hydration {reading.hydration?.value || '—'}%</span>
+                          <span>Sleep {reading.sleepScore?.value || '—'}%</span>
+                        </div>
+                        <button type="button" className="tracker-delete-btn" onClick={() => handleDelete(reading._id)}>
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            ))
           )}
-        </div>
+        </section>
+
+        {totalPages > 1 && (
+          <div className="tracker-pagination">
+            <button className="btn btn-secondary btn-sm" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page === 1}>Previous</button>
+            <span>Page {page} of {totalPages}</span>
+            <button className="btn btn-secondary btn-sm" onClick={() => setPage((value) => Math.min(totalPages, value + 1))} disabled={page === totalPages}>Next</button>
+          </div>
+        )}
       </div>
     </div>
   );
