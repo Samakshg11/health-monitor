@@ -284,7 +284,7 @@ const buildCompositeBodyReading = (readings = []) => {
 };
 
 const Dashboard = () => {
-  const { user, tracking, enableTracking } = useAuth();
+  const { user, tracking, enableTracking, disableTracking, verification, wearable } = useAuth();
   const { latestReading: socketReading, liveAlerts } = useSocket();
   const [latest, setLatest] = useState(null);
   const [recentReadings, setRecentReadings] = useState([]);
@@ -392,6 +392,16 @@ const Dashboard = () => {
   const billingUsageLabel = billingSummary?.usage?.readings?.limit === null
     ? `${billingSummary?.usage?.readings?.used || 0} used`
     : `${billingSummary?.usage?.readings?.used || 0}/${billingSummary?.usage?.readings?.limit || 0} used`;
+  const lastLivePostLabel = verification?.lastPostedAt
+    ? formatDistanceToNow(new Date(verification.lastPostedAt), { addSuffix: true })
+    : 'No live post yet';
+  const trackingStatusLabel = !tracking.ready
+    ? 'Checking tracker status'
+    : tracking.enabled
+      ? (verification?.lastPostStatus === 'error' ? 'Tracking on, post failing' : 'Tracking on')
+      : 'Tracking off';
+  const geoLabel = wearable?.sensorStatus?.geoPermission || 'unknown';
+  const motionLabel = wearable?.sensorStatus?.motionPermission || 'unknown';
 
   const highlights = [
     {
@@ -576,6 +586,30 @@ const Dashboard = () => {
       </div>
 
       <div className="page-content tracker-dashboard">
+        <section className="card tracker-control-card">
+          <div>
+            <span className="eyebrow">Live tracking</span>
+            <h3>{trackingStatusLabel}</h3>
+            <p className="tracker-flow-summary">
+              Last live post: {lastLivePostLabel}. Motion permission is {motionLabel} and location permission is {geoLabel}.
+            </p>
+          </div>
+          <div className="tracker-control-actions">
+            {tracking.enabled ? (
+              <button type="button" className="btn btn-secondary btn-sm" style={{ width: 'auto' }} onClick={disableTracking}>
+                Stop tracking
+              </button>
+            ) : (
+              <button type="button" className="btn btn-primary btn-sm" style={{ width: 'auto' }} onClick={() => enableTracking()}>
+                Start phone tracking
+              </button>
+            )}
+            <Link to="/history" className="btn btn-secondary btn-sm" style={{ width: 'auto' }}>
+              Open history
+            </Link>
+          </div>
+        </section>
+
         {user?.onboarding?.completed !== true && (
           <section className="card tracker-onboarding-banner">
             <div>
