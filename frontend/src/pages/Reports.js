@@ -1,12 +1,43 @@
 import React, { useState, useEffect } from 'react';
 import { getStats } from '../utils/api';
+import { useAuth } from '../context/AuthContext';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import { format } from 'date-fns';
 import { downloadCsv } from '../utils/export';
 
+const reportLens = {
+  fitness: {
+    title: 'Performance summary',
+    detail: 'Use reports to judge momentum through steps, calories, active minutes, and whether effort is staying repeatable.',
+    primaryStatLabels: ['Avg BPM', 'Total Steps', 'Total Calories', 'Active Mins'],
+  },
+  wellness: {
+    title: 'Habit consistency summary',
+    detail: 'Read this report as a weekly check on steady routines, balanced output, and whether health patterns are staying sustainable.',
+    primaryStatLabels: ['Avg BPM', 'Distance (km)', 'Active Mins', 'Readings'],
+  },
+  recovery: {
+    title: 'Recovery summary',
+    detail: 'Focus more on whether workload is staying in balance with sleep, stress, and day-to-day rebuilding capacity.',
+    primaryStatLabels: ['Avg BPM', 'Min BPM', 'Active Mins', 'Distance (km)'],
+  },
+  'clinical-awareness': {
+    title: 'Signal review summary',
+    detail: 'Prioritize trend direction and repeated changes over exact single-point values, especially when some metrics are phone-derived.',
+    primaryStatLabels: ['Avg BPM', 'Min BPM', 'Max BPM', 'Readings'],
+  },
+};
+
+const trackingModeLabels = {
+  phone_only: 'Phone-only tracking',
+  future_band: 'Future wearable path',
+  both: 'Phone now + wearable later',
+};
+
 const Reports = () => {
+  const { user } = useAuth();
   const [days, setDays] = useState(7);
   const [stats, setStats] = useState(null);
   const [chartData, setChartData] = useState([]);
@@ -61,13 +92,24 @@ const Reports = () => {
     downloadCsv(`vitalwatch-report-${days}d.csv`, rows);
   };
 
+  const onboarding = user?.onboarding || {};
+  const lens = reportLens[onboarding.trackingGoal] || reportLens.fitness;
+  const modeLabel = trackingModeLabels[onboarding.preferredTrackingMode] || trackingModeLabels.phone_only;
+  const emphasis = onboarding.trackingGoal === 'recovery'
+    ? 'Read effort alongside recovery instead of optimizing output in isolation.'
+    : onboarding.trackingGoal === 'clinical-awareness'
+      ? 'Treat repeated changes as stronger than isolated outliers.'
+      : onboarding.trackingGoal === 'wellness'
+        ? 'Consistency matters more than chasing a perfect day.'
+        : 'Use these reports to protect consistency and training momentum.';
+
   return (
     <div>
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <h1>Health Reports</h1>
-            <p>Vitals + fitness analytics over time</p>
+            <p>Setup-aware trends shaped by your goal, tracking mode, and source confidence.</p>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {[7, 14, 30].map((d) => (
@@ -88,23 +130,46 @@ const Reports = () => {
           <div className="card"><div className="empty-state"><div className="empty-state-icon">📊</div><h3>Not enough data</h3><p>Log more readings to see reports</p></div></div>
         ) : (
           <>
+            <div className="card" style={{ marginBottom: 20 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.08em', marginBottom: 8 }}>Report lens</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem' }}>{lens.title}</div>
+                  <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7, marginTop: 8 }}>{lens.detail}</p>
+                </div>
+                <div style={{ minWidth: 220 }}>
+                  <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.08em', marginBottom: 8 }}>Tracking mode</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '1rem' }}>{modeLabel}</div>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', marginTop: 6 }}>
+                    {onboarding.experienceLevel || 'beginner'} level summary
+                  </div>
+                </div>
+              </div>
+              <p style={{ color: 'var(--text-secondary)', marginTop: 14, lineHeight: 1.7 }}>{emphasis}</p>
+              {onboarding.preferredTrackingMode === 'phone_only' && (
+                <p style={{ color: 'var(--text-secondary)', marginTop: 10, lineHeight: 1.7 }}>
+                  In phone-only mode, movement trends deserve more trust than exact body-vital precision. Use this report to confirm direction, not device-grade certainty.
+                </p>
+              )}
+            </div>
+
             <div style={{ marginBottom: 24 }}>
               <h3 style={{ fontFamily: 'var(--font-display)', marginBottom: 14, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>❤️ Heart Rate — Last {days} days</h3>
               <div className="stats-grid">
-                <StatBox label="Avg BPM" value={stats.heartRate && stats.heartRate.avg} />
-                <StatBox label="Min BPM" value={stats.heartRate && stats.heartRate.min} />
-                <StatBox label="Max BPM" value={stats.heartRate && stats.heartRate.max} />
-                <StatBox label="Readings" value={stats.heartRate && stats.heartRate.count} />
+                <StatBox label="Avg BPM" value={stats.heartRate && stats.heartRate.avg} sub={lens.primaryStatLabels.includes('Avg BPM') ? 'Primary for your setup' : null} />
+                <StatBox label="Min BPM" value={stats.heartRate && stats.heartRate.min} sub={lens.primaryStatLabels.includes('Min BPM') ? 'Primary for your setup' : null} />
+                <StatBox label="Max BPM" value={stats.heartRate && stats.heartRate.max} sub={lens.primaryStatLabels.includes('Max BPM') ? 'Primary for your setup' : null} />
+                <StatBox label="Readings" value={stats.heartRate && stats.heartRate.count} sub={lens.primaryStatLabels.includes('Readings') ? 'Primary for your setup' : null} />
               </div>
             </div>
 
             <div style={{ marginBottom: 24 }}>
               <h3 style={{ fontFamily: 'var(--font-display)', marginBottom: 14, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>👟 Fitness Summary — Last {days} days</h3>
               <div className="stats-grid">
-                <StatBox label="Total Steps" value={stats.steps && stats.steps.total && stats.steps.total.toLocaleString()} />
-                <StatBox label="Total Calories" value={stats.calories && stats.calories.total} />
-                <StatBox label="Distance (km)" value={stats.distance && stats.distance.total} />
-                <StatBox label="Active Mins" value={stats.activeMinutes && stats.activeMinutes.total} />
+                <StatBox label="Total Steps" value={stats.steps && stats.steps.total && stats.steps.total.toLocaleString()} sub={lens.primaryStatLabels.includes('Total Steps') ? 'Primary for your setup' : null} />
+                <StatBox label="Total Calories" value={stats.calories && stats.calories.total} sub={lens.primaryStatLabels.includes('Total Calories') ? 'Primary for your setup' : null} />
+                <StatBox label="Distance (km)" value={stats.distance && stats.distance.total} sub={lens.primaryStatLabels.includes('Distance (km)') ? 'Primary for your setup' : null} />
+                <StatBox label="Active Mins" value={stats.activeMinutes && stats.activeMinutes.total} sub={lens.primaryStatLabels.includes('Active Mins') ? 'Primary for your setup' : null} />
               </div>
             </div>
 
