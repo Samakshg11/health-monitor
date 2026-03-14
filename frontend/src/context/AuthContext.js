@@ -24,6 +24,7 @@ const round1 = (value) => Number(value.toFixed(1));
 const getLocalDayKey = (date = new Date()) => (
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 );
+const getTrackingStorageKey = (userId) => `vw_tracking_enabled_${userId}`;
 
 const goalProfiles = {
   fitness: {
@@ -74,6 +75,8 @@ export const AuthProvider = ({ children }) => {
   const [wearableBattery, setWearableBattery] = useState(Number(localStorage.getItem('vw_wearable_battery') || 87));
   const [lastSyncAt, setLastSyncAt] = useState(null);
   const [lastSyncStatus, setLastSyncStatus] = useState('idle');
+  const [trackingEnabled, setTrackingEnabled] = useState(false);
+  const [trackingReady, setTrackingReady] = useState(false);
   const [verification, setVerification] = useState({
     lastGeneratedAt: null,
     lastGeneratedPayload: null,
@@ -264,20 +267,53 @@ export const AuthProvider = ({ children }) => {
     return dailyMovementRef.current;
   };
 
+  const enableTracking = async ({ requestPermissions = true } = {}) => {
+    if (requestPermissions) {
+      await requestSensorPermissions();
+    }
+
+    if (user?._id) {
+      localStorage.setItem(getTrackingStorageKey(user._id), 'true');
+    }
+
+    setTrackingEnabled(true);
+    setLastSyncStatus('starting');
+  };
+
+  const disableTracking = () => {
+    if (user?._id) {
+      localStorage.setItem(getTrackingStorageKey(user._id), 'false');
+    }
+    setTrackingEnabled(false);
+    setLastSyncStatus('idle');
+  };
+
   // Load user on mount
   useEffect(() => {
     const loadUser = async () => {
       if (!token) {
+        setTrackingReady(true);
         setLoading(false);
         return;
       }
       try {
         const { data } = await API.get('/auth/me');
         setUser(data.user);
+        const storageKey = getTrackingStorageKey(data.user._id);
+        const storedPreference = localStorage.getItem(storageKey);
+        const { data: latestData } = await API.get('/health/latest');
+        const hasExistingReadings = Boolean(latestData?.reading);
+
+        setTrackingEnabled(
+          storedPreference === null ? hasExistingReadings : storedPreference === 'true'
+        );
+        setTrackingReady(true);
       } catch {
         localStorage.removeItem('token');
         setToken(null);
         setUser(null);
+        setTrackingEnabled(false);
+        setTrackingReady(true);
       } finally {
         setLoading(false);
       }
@@ -291,7 +327,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    if (!user || !token) return undefined;
+    if (!user || !token || !trackingReady || !trackingEnabled) return undefined;
 
     const modeTemplates = {
       balanced: { hr: [108, 132], cadence: [148, 168], pace: [5.5, 6.6], steps: [130, 230] },
@@ -598,7 +634,7 @@ export const AuthProvider = ({ children }) => {
         window.removeEventListener('devicemotion', onMotion);
       }
     };
-  }, [user, token]);
+  }, [user, token, trackingEnabled, trackingReady]);
 
   const login = async (email, password) => {
     const { data } = await API.post('/auth/login', { email: email.trim(), password });
@@ -621,6 +657,7 @@ export const AuthProvider = ({ children }) => {
 
     const { data } = await API.post('/auth/register', payload);
     localStorage.setItem('token', data.token);
+    localStorage.setItem(getTrackingStorageKey(data.user._id), 'false');
     setToken(data.token);
     setUser(data.user);
     return data;
@@ -630,6 +667,8 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     setToken(null);
     setUser(null);
+    setTrackingEnabled(false);
+    setTrackingReady(false);
   };
 
   const updateProfile = async (profileData) => {
@@ -669,6 +708,12 @@ export const AuthProvider = ({ children }) => {
           sensorStatus,
         },
         verification,
+        tracking: {
+          enabled: trackingEnabled,
+          ready: trackingReady,
+        },
+        enableTracking,
+        disableTracking,
         pairWearable,
         unpairWearable,
         requestSensorPermissions,

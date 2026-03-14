@@ -174,7 +174,7 @@ const confidenceTierCopy = {
 };
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, tracking, enableTracking } = useAuth();
   const { latestReading: socketReading, liveAlerts } = useSocket();
   const [latest, setLatest] = useState(null);
   const [chartData, setChartData] = useState([]);
@@ -313,6 +313,104 @@ const Dashboard = () => {
     `Vitals ${supportedMetrics.vitals || 'estimated'}`,
     `Recovery ${supportedMetrics.recovery || 'trend-based'}`,
   ];
+  const showFirstRunState = tracking.ready && !tracking.enabled && !latest;
+  const showWaitingForFirstSync = tracking.ready && tracking.enabled && !latest;
+
+  if (showFirstRunState) {
+    return (
+      <div>
+        <div className="page-header tracker-header">
+          <div>
+            <span className="eyebrow">Daily summary</span>
+            <h1>{greeting}, {firstName}</h1>
+            <p>{format(new Date(), 'EEEE, MMMM d')} · Start one source path and the dashboard will begin filling with real activity or check-in data.</p>
+          </div>
+        </div>
+
+        <div className="page-content tracker-dashboard">
+          <section className="card tracker-start-card">
+            <div className="tracker-start-copy">
+              <span className="eyebrow">Start tracking</span>
+              <h2>No data yet</h2>
+              <p>
+                New accounts begin empty on purpose. Start phone activity tracking, add a manual check-in, or connect the free Health Connect path.
+              </p>
+              <div className="tracker-start-actions">
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  style={{ width: 'auto' }}
+                  onClick={() => enableTracking()}
+                >
+                  Start phone tracking
+                </button>
+                <Link to="/log" className="btn btn-secondary btn-sm" style={{ width: 'auto' }}>
+                  Add first check-in
+                </Link>
+                <Link to="/wearable" className="btn btn-secondary btn-sm" style={{ width: 'auto' }}>
+                  Open device sources
+                </Link>
+              </div>
+            </div>
+            <div className="tracker-start-grid">
+              <article className="tracker-start-tile">
+                <span className="eyebrow">Phone sync</span>
+                <strong>Movement first</strong>
+                <p>Steps, distance, and active minutes start after you explicitly enable tracking.</p>
+              </article>
+              <article className="tracker-start-tile">
+                <span className="eyebrow">Manual check-in</span>
+                <strong>User-entered vitals</strong>
+                <p>Heart rate, SpO2, temperature, BP, sleep, and hydration stay under your control.</p>
+              </article>
+              <article className="tracker-start-tile">
+                <span className="eyebrow">Health Connect</span>
+                <strong>Free connected path</strong>
+                <p>Import connected-source activity through the free Android-friendly adapter flow.</p>
+              </article>
+            </div>
+          </section>
+        </div>
+      </div>
+    );
+  }
+
+  if (showWaitingForFirstSync) {
+    return (
+      <div>
+        <div className="page-header tracker-header">
+          <div>
+            <span className="eyebrow">Daily summary</span>
+            <h1>{greeting}, {firstName}</h1>
+            <p>{format(new Date(), 'EEEE, MMMM d')} · Tracking is on. We&apos;re waiting for your first activity snapshot or check-in.</p>
+          </div>
+          <div className="tracker-header-actions">
+            <span className="live-badge"><span className="live-dot" /> Starting sync</span>
+          </div>
+        </div>
+
+        <div className="page-content tracker-dashboard">
+          <section className="card tracker-start-card tracker-start-card-waiting">
+            <div className="tracker-start-copy">
+              <span className="eyebrow">Sync in progress</span>
+              <h2>Waiting for first snapshot</h2>
+              <p>
+                Phone tracking is enabled. Move with your phone, add a manual check-in, or import a connected source and the dashboard will update.
+              </p>
+              <div className="tracker-start-actions">
+                <Link to="/log" className="btn btn-secondary btn-sm" style={{ width: 'auto' }}>
+                  Add manual check-in
+                </Link>
+                <Link to="/wearable" className="btn btn-secondary btn-sm" style={{ width: 'auto' }}>
+                  Import connected source
+                </Link>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
