@@ -3050,6 +3050,72 @@ body {
   margin-bottom: 14px;
 }
 
+.tracker-audit-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.tracker-compare-table {
+  display: grid;
+  gap: 10px;
+}
+
+.tracker-compare-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) repeat(2, minmax(0, 0.6fr)) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.04);
+}
+
+.tracker-compare-row span:first-child,
+.tracker-compare-row strong {
+  font-size: 0.84rem;
+}
+
+.tracker-compare-badge {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  border-radius: 999px;
+  justify-self: end;
+}
+
+.tracker-compare-badge.match {
+  background: rgba(46, 204, 113, 0.14);
+  color: var(--accent-green);
+}
+
+.tracker-compare-badge.mismatch {
+  background: rgba(230, 57, 70, 0.14);
+  color: var(--accent-red);
+}
+
+.tracker-compare-badge.missing {
+  background: rgba(243, 156, 18, 0.14);
+  color: var(--accent-yellow);
+}
+
+.tracker-code-card pre {
+  margin: 0;
+  max-height: 420px;
+  overflow: auto;
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(5, 7, 14, 0.72);
+  border: 1px solid rgba(255,255,255,0.05);
+  color: #d7d9e9;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 /* EKG line animation for dashboard */
 .ekg-line {
   height: 40px;
@@ -3140,6 +3206,7 @@ body {
   .tracker-history-overview { grid-template-columns: 1fr; }
   .tracker-session-main,
   .tracker-session-footer { align-items: flex-start; }
+  .tracker-compare-row { grid-template-columns: 1fr; }
   .page-header { padding: 24px 20px 0; }
   .page-content { padding: 0 20px 24px; }
 }

@@ -12,6 +12,7 @@ export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
   const [latestReading, setLatestReading] = useState(null);
   const [liveAlerts, setLiveAlerts] = useState([]);
+  const [lastSocketEvent, setLastSocketEvent] = useState(null);
 
   useEffect(() => {
     if (!user || !token) {
@@ -33,10 +34,20 @@ export const SocketProvider = ({ children }) => {
 
     newSocket.on('new_reading', (reading) => {
       setLatestReading(reading);
+      setLastSocketEvent({
+        type: 'new_reading',
+        receivedAt: new Date().toISOString(),
+        payload: reading,
+      });
     });
 
     newSocket.on('new_alert', (alert) => {
       setLiveAlerts((prev) => [alert, ...prev].slice(0, 50));
+      setLastSocketEvent({
+        type: 'new_alert',
+        receivedAt: new Date().toISOString(),
+        payload: alert,
+      });
     });
 
     setSocket(newSocket);
@@ -50,7 +61,7 @@ export const SocketProvider = ({ children }) => {
   const clearLiveAlerts = () => setLiveAlerts([]);
 
   return (
-    <SocketContext.Provider value={{ socket, latestReading, liveAlerts, clearLiveAlerts }}>
+    <SocketContext.Provider value={{ socket, latestReading, liveAlerts, clearLiveAlerts, lastSocketEvent }}>
       {children}
     </SocketContext.Provider>
   );

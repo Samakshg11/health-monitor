@@ -14,6 +14,7 @@ import Profile from './pages/Profile';
 import Billing from './pages/Billing';
 import Insights from './pages/Insights';
 import WearableSetup from './pages/WearableSetup';
+import Verification from './pages/Verification';
 import Layout from './components/Layout';
 import './App.css';
 
@@ -91,6 +92,10 @@ function App() {
             <Route
               path="/wearable"
               element={<PrivateRoute><Layout><WearableSetup /></Layout></PrivateRoute>}
+            />
+            <Route
+              path="/verification"
+              element={<PrivateRoute><Layout><Verification /></Layout></PrivateRoute>}
             />
           </Routes>
         </Router>

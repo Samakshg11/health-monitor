@@ -27,6 +27,14 @@ export const AuthProvider = ({ children }) => {
   const [wearableBattery, setWearableBattery] = useState(Number(localStorage.getItem('vw_wearable_battery') || 87));
   const [lastSyncAt, setLastSyncAt] = useState(null);
   const [lastSyncStatus, setLastSyncStatus] = useState('idle');
+  const [verification, setVerification] = useState({
+    lastGeneratedAt: null,
+    lastGeneratedPayload: null,
+    lastPostStatus: 'idle',
+    lastPostedAt: null,
+    lastPostResponse: null,
+    lastPostError: null,
+  });
   const [sensorStatus, setSensorStatus] = useState({
     geoPermission: 'unknown',
     motionPermission: 'unknown',
@@ -320,10 +328,25 @@ export const AuthProvider = ({ children }) => {
         notes: `${isPaired ? 'VitalBand sync' : 'Phone estimate sync'} · ${mode} · conf ${overallConfidence}%`,
       };
 
+      setVerification((prev) => ({
+        ...prev,
+        lastGeneratedAt: new Date().toISOString(),
+        lastGeneratedPayload: payload,
+        lastPostStatus: 'posting',
+        lastPostError: null,
+      }));
+
       try {
-        await API.post('/health/reading', payload);
+        const response = await API.post('/health/reading', payload);
         setLastSyncAt(new Date().toISOString());
         setLastSyncStatus('ok');
+        setVerification((prev) => ({
+          ...prev,
+          lastPostStatus: 'ok',
+          lastPostedAt: new Date().toISOString(),
+          lastPostResponse: response.data,
+          lastPostError: null,
+        }));
         if (isPaired) {
           syncWearableState({
             battery: wearableRef.current.battery - (Math.random() > 0.72 ? 1 : 0),
@@ -331,6 +354,12 @@ export const AuthProvider = ({ children }) => {
         }
       } catch (err) {
         setLastSyncStatus('error');
+        setVerification((prev) => ({
+          ...prev,
+          lastPostStatus: 'error',
+          lastPostedAt: new Date().toISOString(),
+          lastPostError: err?.response?.data || err?.message || 'Unknown error',
+        }));
         if (err?.response?.status !== 402) {
           // Keep silent for transient network issues; stream retries automatically.
           console.debug('Auto tracker sync skipped', err?.message || err);
@@ -413,6 +442,7 @@ export const AuthProvider = ({ children }) => {
           sourceMode: wearablePaired ? 'device' : 'estimated',
           sensorStatus,
         },
+        verification,
         pairWearable,
         unpairWearable,
         requestSensorPermissions,

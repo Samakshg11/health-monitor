@@ -126,6 +126,12 @@ const iconMap = {
       <path d="M12 8v4l2.5 2" />
     </>
   ),
+  verify: (
+    <>
+      <path d="M5 12.5 9 16l10-10" />
+      <path d="M4 4h16v16H4z" />
+    </>
+  ),
 };
 
 export const TrackerIcon = ({ name, size = 18, className = '' }) => (
