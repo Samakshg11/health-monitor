@@ -17,18 +17,31 @@ const app = express();
 const server = http.createServer(app);
 
 // ================== MIDDLEWARE ==================
-const allowedOrigins = [
+const configuredOrigins = [
   process.env.CLIENT_URL,
   process.env.CLIENT_URL_ALT,
+  ...(process.env.CLIENT_URLS || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean),
+];
+
+const allowedOrigins = [
+  ...configuredOrigins,
   'http://localhost:3000',
   'http://127.0.0.1:3000',
   'http://localhost:5001',
 ].filter(Boolean);
 
+const renderFrontendPattern = /^https:\/\/health-monitor(?:-frontend)?-[a-z0-9]+\.onrender\.com$/i;
+
 const corsOriginValidator = (origin, callback) => {
   // Allow non-browser clients and same-origin server calls.
   if (!origin) return callback(null, true);
   if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+    return callback(null, true);
+  }
+  if (renderFrontendPattern.test(origin)) {
     return callback(null, true);
   }
   if (allowedOrigins.includes(origin)) return callback(null, true);
