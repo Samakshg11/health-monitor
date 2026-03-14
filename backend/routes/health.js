@@ -4,21 +4,13 @@ const Alert = require('../models/Alert');
 const User = require('../models/User');
 const { protect } = require('../middleware/auth');
 const { getPlan } = require('../config/plans');
+const {
+  metricConfidence,
+  shouldSoftenEstimatedAlert,
+  normalizeIncomingReading,
+} = require('../utils/healthPipeline');
 
 const router = express.Router();
-
-const metricConfidence = (reading, key) => {
-  const explicit = reading?.confidence?.[key];
-  if (typeof explicit === 'number') return explicit;
-  if (typeof reading?.confidence?.overall === 'number') return reading.confidence.overall;
-  return 100;
-};
-
-const shouldSoftenEstimatedAlert = (reading, key) => {
-  if (reading?.source !== 'estimated') return false;
-  const vitalKeys = ['heartRate', 'bloodPressure', 'spo2', 'temperature', 'stressLevel'];
-  return vitalKeys.includes(key);
-};
 
 // Helper: generate alerts from a reading
 const generateAlerts = async (reading, userId, io) => {
@@ -172,47 +164,11 @@ router.post('/reading', protect, async (req, res) => {
       }
     }
 
-    const {
-      heartRate,
-      bloodPressure,
-      spo2,
-      temperature,
-      steps,
-      calories,
-      distance,
-      cadence,
-      activeMinutes,
-      hydration,
-      sleepScore,
-      sleepHours,
-      stressLevel,
-      source,
-      sourceDetails,
-      confidence,
-      workoutMode,
-      notes,
-    } = req.body;
+    const normalized = normalizeIncomingReading(req.body);
 
     const reading = await HealthReading.create({
       user: req.user._id,
-      heartRate,
-      bloodPressure,
-      spo2,
-      temperature,
-      steps,
-      calories,
-      distance,
-      cadence,
-      activeMinutes,
-      hydration,
-      sleepScore,
-      sleepHours,
-      stressLevel,
-      source,
-      sourceDetails,
-      confidence,
-      workoutMode,
-      notes,
+      ...normalized,
     });
 
     // Generate alerts based on reading
