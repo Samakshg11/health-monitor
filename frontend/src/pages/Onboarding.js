@@ -61,7 +61,7 @@ const Onboarding = () => {
   };
 
   return (
-    <div className="auth-page onboarding-page">
+    <div className="relative flex min-h-screen items-center justify-center bg-[var(--bg-primary)] px-4 py-8 md:px-5">
       <div className="auth-bg">
         <div className="auth-bg-circle" />
         <div className="auth-bg-circle" />
@@ -80,14 +80,14 @@ const Onboarding = () => {
           </div>
         </div>
 
-        <div className="auth-card onboarding-card">
-          <h2 className="auth-title">Tracking Setup</h2>
-          <p className="auth-subtitle">Choose the path that matches how you want to use the product right now.</p>
+        <div className="relative z-[1] w-full max-w-full rounded-[20px] border border-[var(--border)] bg-[var(--bg-card)] p-10 shadow-[var(--shadow),var(--shadow-glow)]">
+          <h2 className="mb-1.5 font-[var(--font-display)] text-[1.8rem] font-bold">Tracking Setup</h2>
+          <p className="mb-7 text-[0.85rem] text-[var(--text-secondary)]">Choose the path that matches how you want to use the product right now.</p>
 
           <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label>Main Goal</label>
-              <select name="trackingGoal" value={form.trackingGoal} onChange={handleChange}>
+            <div className="mb-[18px]">
+              <label className="mb-2 block text-[0.75rem] uppercase tracking-[0.08em] text-[var(--text-secondary)]">Main Goal</label>
+              <select className="w-full rounded-[10px] border border-[var(--border)] bg-[var(--bg-secondary)] px-4 py-3 font-[var(--font-mono)] text-[0.9rem] text-[var(--text-primary)] outline-none transition-[border-color,box-shadow] duration-200 focus:border-[var(--accent-red)] focus:shadow-[0_0_0_3px_rgba(230,57,70,0.1)]" name="trackingGoal" value={form.trackingGoal} onChange={handleChange}>
                 <option value="fitness">Fitness</option>
                 <option value="wellness">Wellness</option>
                 <option value="recovery">Recovery</option>
@@ -95,18 +95,18 @@ const Onboarding = () => {
               </select>
             </div>
 
-            <div className="form-group">
-              <label>Experience Level</label>
-              <select name="experienceLevel" value={form.experienceLevel} onChange={handleChange}>
+            <div className="mb-[18px]">
+              <label className="mb-2 block text-[0.75rem] uppercase tracking-[0.08em] text-[var(--text-secondary)]">Experience Level</label>
+              <select className="w-full rounded-[10px] border border-[var(--border)] bg-[var(--bg-secondary)] px-4 py-3 font-[var(--font-mono)] text-[0.9rem] text-[var(--text-primary)] outline-none transition-[border-color,box-shadow] duration-200 focus:border-[var(--accent-red)] focus:shadow-[0_0_0_3px_rgba(230,57,70,0.1)]" name="experienceLevel" value={form.experienceLevel} onChange={handleChange}>
                 <option value="beginner">Beginner</option>
                 <option value="regular">Regular</option>
                 <option value="advanced">Advanced</option>
               </select>
             </div>
 
-            <div className="form-group">
-              <label>Preferred Tracking Mode</label>
-              <select name="preferredTrackingMode" value={form.preferredTrackingMode} onChange={handleChange}>
+            <div className="mb-[18px]">
+              <label className="mb-2 block text-[0.75rem] uppercase tracking-[0.08em] text-[var(--text-secondary)]">Preferred Tracking Mode</label>
+              <select className="w-full rounded-[10px] border border-[var(--border)] bg-[var(--bg-secondary)] px-4 py-3 font-[var(--font-mono)] text-[0.9rem] text-[var(--text-primary)] outline-none transition-[border-color,box-shadow] duration-200 focus:border-[var(--accent-red)] focus:shadow-[0_0_0_3px_rgba(230,57,70,0.1)]" name="preferredTrackingMode" value={form.preferredTrackingMode} onChange={handleChange}>
                 <option value="phone_only">Phone only</option>
                 <option value="future_band">Future wearable</option>
                 <option value="both">Both paths</option>
