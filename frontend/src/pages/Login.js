@@ -74,7 +74,7 @@ const Login = () => {
         </form>
 
         <p className="mt-5 text-center text-[0.85rem] text-[var(--text-secondary)]">
-          Don't have an account? <Link to="/register">Create one</Link>
+          Don't have an account? <Link className="text-[var(--accent-red)]" to="/register">Create one</Link>
         </p>
       </div>
     </div>
