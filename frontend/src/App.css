@@ -3643,7 +3643,6 @@ body {
   .charts-grid { grid-template-columns: 1fr; }
   .metrics-grid { grid-template-columns: repeat(2, 1fr); }
   .input-group { grid-template-columns: 1fr; }
-  .form-row { grid-template-columns: 1fr; }
   .landing-topbar { top: 8px; padding: 10px; }
   .landing-topbar-links { display: none; }
   .landing-topbar-actions { gap: 6px; }
@@ -3706,5 +3705,4 @@ body {
   .tracker-compare-row { grid-template-columns: 1fr; }
   .page-header { padding: 24px 20px 0; }
   .page-content { padding: 0 20px 24px; }
-  .onboarding-page { padding: 20px 16px; }
 }
