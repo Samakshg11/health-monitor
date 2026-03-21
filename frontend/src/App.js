@@ -23,9 +23,9 @@ import './App.css';
 const PrivateRoute = ({ children, allowIncomplete = false }) => {
   const { user, loading } = useAuth();
   if (loading) return (
-    <div className="loading-screen">
-      <div className="pulse-loader">
-        <div className="heart-icon">♥</div>
+    <div className="flex min-h-screen items-center justify-center bg-[var(--bg-primary)]">
+      <div className="flex flex-col items-center gap-4">
+        <div className="animate-pulse text-5xl text-[var(--accent-red)]">♥</div>
         <p>Loading...</p>
       </div>
     </div>
