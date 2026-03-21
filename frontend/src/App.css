@@ -24,6 +24,7 @@
   --font-mono: 'JetBrains Mono', monospace;
   --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
   --shadow-glow: 0 0 20px rgba(230, 57, 70, 0.15);
+  --focus-ring: 0 0 0 3px rgba(230, 57, 70, 0.25);
 }
 
 * {
@@ -39,6 +40,11 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   letter-spacing: 0.01em;
+}
+
+:where(a, button, input, select, textarea):focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 /* Scrollbar */
@@ -298,7 +304,7 @@ body {
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.2s;
   letter-spacing: 0.02em;
 }
 
@@ -2092,7 +2098,7 @@ body {
   text-decoration: none;
   color: var(--text-secondary);
   font-size: 0.875rem;
-  transition: all 0.2s;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
   cursor: pointer;
   border: none;
   background: rgba(255,255,255,0.01);
@@ -2260,7 +2266,7 @@ body {
   border: 1px solid var(--border);
   position: relative;
   overflow: hidden;
-  transition: all 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .metric-card::before {
@@ -2375,7 +2381,7 @@ body {
   border-radius: 12px;
   border: 1px solid var(--border);
   margin-bottom: 10px;
-  transition: all 0.2s;
+  transition: border-color 0.2s, background-color 0.2s;
 }
 
 .alert-item.unread {
@@ -2462,12 +2468,13 @@ body {
   font-family: var(--font-mono);
   font-size: 0.9rem;
   outline: none;
-  transition: all 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
   width: 100%;
 }
 
 .input-field input:focus,
-.input-field textarea:focus {
+.input-field textarea:focus,
+.input-field select:focus {
   border-color: var(--accent-red);
   box-shadow: 0 0 0 3px rgba(230, 57, 70, 0.1);
 }
@@ -2557,6 +2564,18 @@ body {
 @keyframes live-pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.6; transform: scale(0.8); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .landing-progress span {
+    transition: none;
+  }
 }
 
 /* Stats summary cards */
@@ -2800,7 +2819,7 @@ body {
   padding: 6px 10px;
   font-size: 0.78rem;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: border-color 0.2s, color 0.2s, background-color 0.2s;
 }
 
 .checkin-preset-chip:hover,
