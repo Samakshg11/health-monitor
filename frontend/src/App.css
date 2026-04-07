@@ -3852,3 +3852,38 @@ body {
   opacity: 0.7;
   font-style: italic;
 }
+
+/* AI Sleep Lab Styles */
+.tracker-sleep-lab {
+  margin-top: 18px;
+  border: 1px solid rgba(155, 89, 182, 0.2);
+  transition: all 0.3s ease;
+}
+
+.tracker-sleep-lab:hover {
+  border-color: var(--accent-purple);
+  box-shadow: 0 8px 32px rgba(155, 89, 182, 0.1);
+}
+
+.tracker-sleep-recommendations {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.tracker-sleep-rec {
+  background: rgba(155, 89, 182, 0.05);
+  border: 1px solid rgba(155, 89, 182, 0.1);
+  padding: 10px 14px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.tracker-sleep-rec span {
+  opacity: 0.9;
+}
