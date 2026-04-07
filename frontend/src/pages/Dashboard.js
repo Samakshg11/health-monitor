@@ -14,8 +14,9 @@ import {
 } from 'recharts';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
-import { getLatestReading, getReadings, getFitnessToday, getBillingCurrent } from '../utils/api';
+import { getLatestReading, getReadings, getFitnessToday, getBillingCurrent, generateAIReading } from '../utils/api';
 import { ProgressRing, TrackerIcon } from '../components/TrackerUI';
+import toast from 'react-hot-toast';
 
 const toneForStatus = (status) => {
   if (status === 'critical') return { label: 'Attention', color: 'var(--accent-red)' };
@@ -294,6 +295,9 @@ const Dashboard = () => {
   const [fitnessSummary, setFitnessSummary] = useState(null);
   const [billingSummary, setBillingSummary] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isAiMode, setIsAiMode] = useState(false);
+  const [aiActivity, setAiActivity] = useState('sitting');
+  const [isGenerating, setIsGenerating] = useState(false);
   const freshReading = location.state?.freshReading || null;
   const bodyReading = useMemo(
     () => buildCompositeBodyReading([latest, ...recentReadings]),
@@ -372,6 +376,29 @@ const Dashboard = () => {
     });
     loadFitnessSummary();
   }, [socketReading, loadFitnessSummary]);
+
+  useEffect(() => {
+    if (!isAiMode) return undefined;
+
+    const tick = async () => {
+      if (isGenerating) return;
+      setIsGenerating(true);
+      try {
+        await generateAIReading(aiActivity);
+        // Socket will update the dashboard automatically
+      } catch (err) {
+        console.error('AI Generation failed', err);
+        setIsAiMode(false);
+        toast.error('AI Link lost. Check API key.');
+      } finally {
+        setIsGenerating(false);
+      }
+    };
+
+    const id = setInterval(tick, 10000); // Generate every 10s in AI mode
+    tick(); // Initial call
+    return () => clearInterval(id);
+  }, [isAiMode, aiActivity, isGenerating]);
 
   if (loading) {
     return <div style={{ padding: 32, color: 'var(--text-secondary)' }}>Loading tracker...</div>;
@@ -622,6 +649,45 @@ const Dashboard = () => {
             <Link to="/history" className="btn btn-secondary btn-sm" style={{ width: 'auto' }}>
               Open history
             </Link>
+          </div>
+        </section>
+
+        <section className={`card tracker-control-card ${isAiMode ? 'ai-active' : ''}`} style={{ border: isAiMode ? '1px solid var(--accent-blue)' : 'none' }}>
+          <div>
+            <span className="eyebrow" style={{ color: isAiMode ? 'var(--accent-blue)' : 'inherit' }}>AI Health Simulator</span>
+            <h3>{isAiMode ? `Simulating: ${aiActivity}` : 'Virtual AI Sensor'}</h3>
+            <p className="tracker-flow-summary">
+              {isAiMode 
+                ? "Gemini is currently driving your health vitals in real-time based on your simulated activity."
+                : "Switch to AI Mode to let an LLM generate realistic health data instead of random mock signals."}
+            </p>
+          </div>
+          <div className="tracker-control-actions" style={{ gap: 8 }}>
+            {isAiMode && (
+              <select 
+                className="btn btn-secondary btn-sm" 
+                value={aiActivity} 
+                onChange={(e) => setAiActivity(e.target.value)}
+                style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+              >
+                <option value="sitting">🧘 Sitting</option>
+                <option value="walking">🚶 Walking</option>
+                <option value="running">🏃 Running</option>
+                <option value="sleeping">😴 Sleeping</option>
+                <option value="recovering">🔋 Recovering</option>
+              </select>
+            )}
+            <button 
+              type="button" 
+              className={`btn ${isAiMode ? 'btn-secondary' : 'btn-primary'} btn-sm`} 
+              style={{ width: 'auto' }} 
+              onClick={() => {
+                setIsAiMode(!isAiMode);
+                if (!isAiMode) toast.success('AI Health Stream started');
+              }}
+            >
+              {isAiMode ? 'Stop AI Mode' : 'Start AI Mode'}
+            </button>
           </div>
         </section>
 

@@ -11,6 +11,7 @@ const {
 } = require('../utils/healthPipeline');
 const { mapHealthConnectPayload } = require('../utils/healthConnectAdapter');
 const { summarizeMovementMetric } = require('../utils/movementAggregation');
+const { generateHealthReadingAI } = require('../utils/aiSimulator');
 
 const router = express.Router();
 
@@ -579,6 +580,64 @@ router.get('/insights', protect, async (req, res) => {
 
     res.json({ success: true, insights });
   } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// @POST /api/health/generate-ai - Generate a reading using AI simulation
+router.post('/generate-ai', protect, async (req, res) => {
+  try {
+    const latest = await HealthReading.findOne({ user: req.user._id }).sort({ recordedAt: -1 });
+    const user = await User.findById(req.user._id).select('dailyGoals');
+
+    const context = {
+      lastReading: latest || { heartRate: { value: 72 }, spo2: { value: 98 }, temperature: { value: 36.6 } },
+      activity: req.body.activity || 'normal',
+      goals: user?.dailyGoals || { steps: 10000, activeMinutes: 60 }
+    };
+
+    const aiOutput = await generateHealthReadingAI(context);
+
+    // Map AI output to model format
+    const readingPayload = {
+      heartRate: { value: aiOutput.heartRate?.value || aiOutput.heartRate },
+      bloodPressure: {
+        systolic: aiOutput.bloodPressure?.systolic,
+        diastolic: aiOutput.bloodPressure?.diastolic
+      },
+      spo2: { value: aiOutput.spo2?.value || aiOutput.spo2 },
+      temperature: { value: aiOutput.temperature?.value || aiOutput.temperature },
+      steps: { value: aiOutput.steps?.value || aiOutput.steps || 0 },
+      hydration: { value: aiOutput.hydration?.value || aiOutput.hydration },
+      sleepScore: { value: aiOutput.sleepScore?.value || aiOutput.sleepScore },
+      stressLevel: { value: aiOutput.stressLevel?.value || aiOutput.stressLevel },
+      source: 'device', // Mark as device for "AI Sensor" simulation
+      sourceDetails: {
+        mode: 'band_plus_phone',
+        label: 'AI Virtual Sensor',
+        primarySource: 'AI-Generated Health Model',
+        confidenceTier: 'high'
+      },
+      notes: aiOutput.notes || 'AI generated health snapshot'
+    };
+
+    const normalized = normalizeIncomingReading(readingPayload);
+
+    const reading = await HealthReading.create({
+      user: req.user._id,
+      ...normalized
+    });
+
+    const io = req.app.get('io');
+    const alerts = await generateAlerts(reading, req.user._id, io);
+
+    if (io) {
+      io.to(req.user._id.toString()).emit('new_reading', reading);
+    }
+
+    res.status(201).json({ success: true, reading, alerts, method: 'ai_simulation' });
+  } catch (err) {
+    console.error('❌ AI Route Error:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
