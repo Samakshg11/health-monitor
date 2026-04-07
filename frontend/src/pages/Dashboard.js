@@ -27,6 +27,7 @@ const AICoach = ({ history, user }) => {
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [loadingReport, setLoadingReport] = useState(false);
 
   const handleSend = async (e) => {
     e.preventDefault();
@@ -427,7 +428,6 @@ const Dashboard = () => {
   const [aiActivity, setAiActivity] = useState('sitting');
   const [isGenerating, setIsGenerating] = useState(false);
   const [sleepAnalysis, setSleepAnalysis] = useState(null);
-  const [loadingReport, setLoadingReport] = useState(false);
   const freshReading = location.state?.freshReading || null;
   const bodyReading = useMemo(
     () => buildCompositeBodyReading([latest, ...recentReadings]),
