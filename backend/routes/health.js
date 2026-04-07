@@ -11,7 +11,7 @@ const {
 } = require('../utils/healthPipeline');
 const { mapHealthConnectPayload } = require('../utils/healthConnectAdapter');
 const { summarizeMovementMetric } = require('../utils/movementAggregation');
-const { generateHealthReadingAI } = require('../utils/aiSimulator');
+const { generateHealthReadingAI, generateAICoachResponse } = require('../utils/aiSimulator');
 
 const router = express.Router();
 
@@ -638,6 +638,30 @@ router.post('/generate-ai', protect, async (req, res) => {
     res.status(201).json({ success: true, reading, alerts, method: 'ai_simulation' });
   } catch (err) {
     console.error('❌ AI Route Error:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// @POST /api/health/ai-coach - Chat with AI Health Coach
+router.post('/ai-coach', protect, async (req, res) => {
+  try {
+    const { message } = req.body;
+    if (!message) return res.status(400).json({ success: false, message: 'Message is required' });
+
+    // Fetch history for context
+    const readings = await HealthReading.find({ user: req.user._id }).sort({ recordedAt: -1 }).limit(10);
+    const user = await User.findById(req.user._id).select('dailyGoals name onboarding');
+
+    const profile = {
+      name: user.name,
+      goals: user.dailyGoals,
+      onboarding: user.onboarding
+    };
+
+    const response = await generateAICoachResponse(message, readings, profile);
+    res.json({ success: true, response });
+  } catch (err) {
+    console.error('❌ AI Coach Route Error:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 });

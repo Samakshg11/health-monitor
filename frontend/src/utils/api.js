@@ -43,6 +43,7 @@ export const getBillingPlans = () => API.get('/billing/plans');
 export const getBillingCurrent = () => API.get('/billing/current');
 export const subscribePlan = (payload) => API.post('/billing/subscribe', payload);
 export const generateAIReading = (activity) => API.post('/health/generate-ai', { activity });
+export const askAICoach = (message) => API.post('/health/ai-coach', { message });
 
 // Alerts
 export const getAlerts = (params) => API.get('/alerts', { params });
