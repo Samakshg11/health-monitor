@@ -1088,6 +1088,7 @@ const Dashboard = () => {
           </section>
         )}
       </div>
+      <AICoach user={user} history={recentReadings} />
     </div>
   );
 };
