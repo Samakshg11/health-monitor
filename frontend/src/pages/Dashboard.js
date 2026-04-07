@@ -14,9 +14,11 @@ import {
 } from 'recharts';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
-import { getLatestReading, getReadings, getFitnessToday, getBillingCurrent, generateAIReading, askAICoach } from '../utils/api';
+import { getLatestReading, getReadings, getFitnessToday, getBillingCurrent, generateAIReading, askAICoach, getSleepAnalysis, getMedicalReport } from '../utils/api';
 import { ProgressRing, TrackerIcon } from '../components/TrackerUI';
 import toast from 'react-hot-toast';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
 
 const AICoach = ({ history, user }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -45,6 +47,57 @@ const AICoach = ({ history, user }) => {
     }
   };
 
+  const handleGenerateReport = async () => {
+    if (!user) return;
+    setLoadingReport(true);
+    toast.loading('Synthesizing clinical data...', { id: 'report-gen' });
+    
+    try {
+      const { data } = await getMedicalReport();
+      const doc = new jsPDF();
+      
+      // Add Title
+      doc.setFontSize(22);
+      doc.setTextColor(230, 57, 70);
+      doc.text('VitalWatch Clinical Snapshot', 14, 22);
+      
+      doc.setFontSize(10);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
+      doc.text(`Patient: ${user.name}`, 14, 35);
+      
+      // Add Content
+      doc.setFontSize(12);
+      doc.setTextColor(0, 0, 0);
+      const splitText = doc.splitTextToSize(data.report.replace(/#/g, ''), 180);
+      doc.text(splitText, 14, 50);
+      
+      // Add History Table
+      const tableData = history.slice(0, 10).map(r => [
+        format(new Date(r.recordedAt), 'MMM dd, HH:mm'),
+        `${r.heartRate?.value || '--'} BPM`,
+        `${r.bloodPressure?.systolic || '--'}/${r.bloodPressure?.diastolic || '--'}`,
+        `${r.spo2?.value || '--'}%`,
+        `${r.temperature?.value || '--'}C`
+      ]);
+      
+      doc.autoTable({
+        startY: doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : 200,
+        head: [['Time', 'HR', 'BP', 'SpO2', 'Temp']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: { fillColor: [230, 57, 70] },
+      });
+      
+      doc.save(`${user.name.replace(/ /g, '_')}_Health_Report.pdf`);
+      toast.success('Medical Report ready for download', { id: 'report-gen' });
+    } catch (err) {
+      toast.error('Could not generate the clinical report.', { id: 'report-gen' });
+    } finally {
+      setLoadingReport(false);
+    }
+  };
+
   return (
     <div className={`ai-coach-wrapper ${isOpen ? 'open' : ''}`}>
       {!isOpen && (
@@ -61,7 +114,12 @@ const AICoach = ({ history, user }) => {
               <span className="eyebrow" style={{ color: 'var(--accent-blue)' }}>AI Life Coach</span>
               <h3>VitalWatch Intelligence</h3>
             </div>
-            <button className="btn-close" onClick={() => setIsOpen(false)}>×</button>
+            <div style={{ display: 'flex', gap: 8 }}>
+               <button className="btn btn-secondary btn-sm" style={{ padding: '4px 8px', fontSize: '0.6rem' }} onClick={handleGenerateReport} disabled={loadingReport}>
+                {loadingReport ? '...' : 'PDF Report'}
+              </button>
+              <button className="btn-close" onClick={() => setIsOpen(false)}>×</button>
+            </div>
           </div>
 
           <div className="ai-coach-messages">
@@ -368,6 +426,8 @@ const Dashboard = () => {
   const [isAiMode, setIsAiMode] = useState(false);
   const [aiActivity, setAiActivity] = useState('sitting');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [sleepAnalysis, setSleepAnalysis] = useState(null);
+  const [loadingReport, setLoadingReport] = useState(false);
   const freshReading = location.state?.freshReading || null;
   const bodyReading = useMemo(
     () => buildCompositeBodyReading([latest, ...recentReadings]),
@@ -408,6 +468,10 @@ const Dashboard = () => {
           steps: reading.steps?.value,
         }))
       );
+
+      // Fetch AI Sleep Analysis
+      const sleepRes = await getSleepAnalysis();
+      setSleepAnalysis(sleepRes.data.analysis);
 
       await loadFitnessSummary();
     } catch {}
@@ -1047,6 +1111,29 @@ const Dashboard = () => {
             })}
           </div>
         </section>
+
+        {sleepAnalysis && (
+          <section className="card tracker-sleep-lab" style={{ background: 'linear-gradient(135deg, rgba(155, 89, 182, 0.1), transparent)' }}>
+            <div className="panel-heading">
+              <div>
+                <span className="eyebrow" style={{ color: 'var(--accent-purple)' }}>AI Sleep Lab</span>
+                <h3>Sleep efficiency & recovery quality</h3>
+              </div>
+              <span className="tracker-pill" style={{ color: 'var(--accent-purple)', borderColor: 'var(--accent-purple)' }}>{sleepAnalysis.efficiencyScore || '--'}% Quality</span>
+            </div>
+            <p className="tracker-flow-summary" style={{ color: 'var(--text-primary)', opacity: 0.9 }}>
+              {sleepAnalysis.summary}
+            </p>
+            <div className="tracker-sleep-recommendations">
+              {(sleepAnalysis.recommendations || []).map((rec, i) => (
+                <div key={i} className="tracker-sleep-rec">
+                   <TrackerIcon name="activity" size={14} color="var(--accent-purple)" />
+                   <span>{rec}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {chartData.length > 1 && (
           <section className="charts-grid tracker-chart-grid">
