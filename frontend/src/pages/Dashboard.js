@@ -14,9 +14,79 @@ import {
 } from 'recharts';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
-import { getLatestReading, getReadings, getFitnessToday, getBillingCurrent, generateAIReading } from '../utils/api';
+import { getLatestReading, getReadings, getFitnessToday, getBillingCurrent, generateAIReading, askAICoach } from '../utils/api';
 import { ProgressRing, TrackerIcon } from '../components/TrackerUI';
 import toast from 'react-hot-toast';
+
+const AICoach = ({ history, user }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState([
+    { role: 'assistant', text: `Hi ${user?.name?.split(' ')[0] || ''}, I'm your VitalWatch AI Coach. Ready for a pulse check?` }
+  ]);
+  const [input, setInput] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+
+  const handleSend = async (e) => {
+    e.preventDefault();
+    if (!input.trim() || isTyping) return;
+
+    const userMsg = input.trim();
+    setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+    setInput('');
+    setIsTyping(true);
+
+    try {
+      const { data } = await askAICoach(userMsg);
+      setMessages(prev => [...prev, { role: 'assistant', text: data.response }]);
+    } catch (err) {
+      setMessages(prev => [...prev, { role: 'assistant', text: "I'm having a connection issue. Can you check your API key?" }]);
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  return (
+    <div className={`ai-coach-wrapper ${isOpen ? 'open' : ''}`}>
+      {!isOpen && (
+        <button className="ai-coach-trigger" onClick={() => setIsOpen(true)}>
+          <TrackerIcon name="device" size={24} />
+          <span>Coach pulse</span>
+        </button>
+      )}
+
+      {isOpen && (
+        <div className="ai-coach-card card">
+          <div className="ai-coach-header">
+            <div>
+              <span className="eyebrow" style={{ color: 'var(--accent-blue)' }}>AI Life Coach</span>
+              <h3>VitalWatch Intelligence</h3>
+            </div>
+            <button className="btn-close" onClick={() => setIsOpen(false)}>×</button>
+          </div>
+
+          <div className="ai-coach-messages">
+            {messages.map((m, i) => (
+              <div key={i} className={`ai-msg ${m.role}`}>
+                <div className="ai-msg-bubble">{m.text}</div>
+              </div>
+            ))}
+            {isTyping && <div className="ai-msg assistant typing"><div className="ai-msg-bubble">Analysis in progress...</div></div>}
+          </div>
+
+          <form className="ai-coach-input" onSubmit={handleSend}>
+            <input 
+              type="text" 
+              placeholder="Ask about your vitals..." 
+              value={input} 
+              onChange={(e) => setInput(e.target.value)} 
+            />
+            <button type="submit" disabled={isTyping}>→</button>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const toneForStatus = (status) => {
   if (status === 'critical') return { label: 'Attention', color: 'var(--accent-red)' };
