@@ -133,6 +133,56 @@ const generateAICoachResponse = async (userMessage, history = [], userProfile = 
   }
 };
 
+/**
+ * Detailed analysis of sleep trends.
+ */
+const generateSleepAnalysis = async (sleepData = []) => {
+  if (!model) return { summary: "Offline: Add API key for detailed sleep analysis.", suggestions: [] };
+
+  const prompt = `
+    Analyze this user's sleep history and recover state:
+    ${JSON.stringify(sleepData)}
+
+    Guidelines:
+    1. Assess the balance between Sleep Score and Stress Levels.
+    2. Suggest 3 specific biological adjustments based on their data.
+    3. Return a clean JSON object: { "summary": "...", "efficiencyScore": 0-100, "recommendations": ["...", "..."] }
+  `;
+
+  try {
+    const result = await model.generateContent(prompt);
+    return JSON.parse(result.response.text().replace(/```json|```/g, ""));
+  } catch (err) {
+    return { summary: "Could not perform sleep analysis loop.", recommendations: ["Keep your tracker stream consistent."] };
+  }
+};
+
+/**
+ * Professional medical document generation context.
+ */
+const generateMedicalReportMarkdown = async (patientName, readings = []) => {
+  if (!model) return "# VitalWatch Snapshot\n\nPlease add an API key for expert clinical report generation.";
+
+  const prompt = `
+    Create a formal Clinical Health Summary for: ${patientName}.
+    Latest Data: ${JSON.stringify(readings.slice(0, 30))}
+
+    Guidelines:
+    1. Organize into: Patient Overview, Vital Signs Summary (with trend analysis), Clinical Observations, and Risk Assessment.
+    2. Use professional medical language.
+    3. Ensure a clear disclaimer that this is an AI-generated report.
+    4. Keep it to about 500 words.
+    5. Return in Markdown format.
+  `;
+
+  try {
+    const result = await model.generateContent(prompt);
+    return result.response.text();
+  } catch (err) {
+    return "# Clinical Reporting Error\n\nAI service is currently unavailable.";
+  }
+};
+
 const clamp = (min, max, val) => Math.max(min, Math.min(max, val));
 
-module.exports = { generateHealthReadingAI, generateAICoachResponse };
+module.exports = { generateHealthReadingAI, generateAICoachResponse, generateSleepAnalysis, generateMedicalReportMarkdown };

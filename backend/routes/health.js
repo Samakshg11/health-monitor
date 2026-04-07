@@ -11,7 +11,12 @@ const {
 } = require('../utils/healthPipeline');
 const { mapHealthConnectPayload } = require('../utils/healthConnectAdapter');
 const { summarizeMovementMetric } = require('../utils/movementAggregation');
-const { generateHealthReadingAI, generateAICoachResponse } = require('../utils/aiSimulator');
+const { 
+  generateHealthReadingAI, 
+  generateAICoachResponse, 
+  generateSleepAnalysis, 
+  generateMedicalReportMarkdown 
+} = require('../utils/aiSimulator');
 
 const router = express.Router();
 
@@ -662,6 +667,34 @@ router.post('/ai-coach', protect, async (req, res) => {
     res.json({ success: true, response });
   } catch (err) {
     console.error('❌ AI Coach Route Error:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// @GET /api/health/sleep-lab - Deep AI Sleep Analysis
+router.get('/sleep-lab', protect, async (req, res) => {
+  try {
+    const sleepReadings = await HealthReading.find({ 
+      user: req.user._id,
+      $or: [{ sleepScore: { $exists: true } }, { sleepHours: { $exists: true } }]
+    }).sort({ recordedAt: -1 }).limit(14);
+    
+    const analysis = await generateSleepAnalysis(sleepReadings);
+    res.json({ success: true, analysis });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// @GET /api/health/medical-report - Generate a Clinical AI Summary
+router.get('/medical-report', protect, async (req, res) => {
+  try {
+    const latestData = await HealthReading.find({ user: req.user._id }).sort({ recordedAt: -1 }).limit(30);
+    const user = await User.findById(req.user._id).select('name');
+    
+    const reportText = await generateMedicalReportMarkdown(user.name, latestData);
+    res.json({ success: true, report: reportText });
+  } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
