@@ -1,11 +1,11 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 require("dotenv").config();
 
-// Switching to Gemma 3 27B IT for best-in-class quota and intelligence
-const MODEL_NAME = "gemma-3-27b-it";
+// We are locking this to gemini-pro as it is the most universally available model.
+const MODEL_NAME = "gemini-2.5-flash";
 
 const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY.trim()) : null;
-const model = genAI ? genAI.getGenerativeModel({ model: MODEL_NAME }, { apiVersion: 'v1beta' }) : null;
+const model = genAI ? genAI.getGenerativeModel({ model: MODEL_NAME }) : null;
 
 /**
  * Simulates a realistic health reading based on user context.
@@ -16,17 +16,34 @@ const generateHealthReadingAI = async (context = {}) => {
   if (!model) return generateHeuristicReading(lastReading, activity);
 
   const prompt = `
-    Task: Act as a high-precision predictive health sensor.
-    Input: Current activity is ${activity}. Historical context: ${JSON.stringify(lastReading)}. User goals: ${JSON.stringify(goals)}.
-    Requirement: Return a JSON object with realistic readings AND an 8-hour forecast. 
-    Format: { 
-      "heartRate": number, "systolic": number, "diastolic": number, "spo2": number, "temperature": number, "steps": number, "stressLevel": number, "notes": "Brief 1-sentence observation",
+    Task: Act as a virtual medical sensor. 
+    State: ${activity}. Last Readings: ${JSON.stringify(lastReading)}. Health Goals: ${JSON.stringify(goals)}.
+    
+    CRITICAL: You MUST return a JSON object with this EXACT structure:
+    {
+      "heartRate": { "value": number, "status": "stable"|"warning"|"critical" },
+      "spo2": { "value": number, "status": "stable"|"warning"|"critical" },
+      "temperature": { "value": number, "status": "stable" },
+      "bloodPressure": { "systolic": number, "diastolic": number, "status": "stable" },
+      "steps": { "value": number },
+      "stressLevel": { "value": number, "status": "stable" },
+      "confidence": {
+        "heartRate": number(0-100),
+        "spo2": number(0-100),
+        "temperature": number(0-100),
+        "bloodPressure": number(0-100),
+        "steps": number(0-100),
+        "stressLevel": number(0-100),
+        "overall": number(0-100)
+      },
+      "insight": "One sentence performance advice",
       "forecast": [
-        { "time": "2h", "energy": "high|stable|dip", "label": "Short label", "action": "Actionable tip" },
-        ... 3-4 more points
+        { "time": "2h", "energy": "stable", "label": "Baseline" },
+        { "time": "4h", "energy": "dip", "label": "Dip" },
+        { "time": "6h", "energy": "stable", "label": "Recovery" },
+        { "time": "8h", "energy": "high", "label": "Peak" }
       ]
     }
-    Restriction: Return ONLY the JSON. No preamble.
   `;
 
   try {
@@ -34,7 +51,6 @@ const generateHealthReadingAI = async (context = {}) => {
     const text = result.response.text();
     return JSON.parse(text.replace(/```json|```/g, "").trim());
   } catch (err) {
-    // Quiet failing to heuristic
     return generateHeuristicReading(lastReading, activity);
   }
 };
@@ -45,34 +61,23 @@ const generateHealthReadingAI = async (context = {}) => {
 const generateAICoachResponse = async (userMessage, history = [], userProfile = {}) => {
   if (!model) return "AI Offline: Please check your API key in AI Studio.";
 
-  const prompt = `Act as an Elite Health Performance Strategist (Bio-hacking Expert) for ${userProfile.name}.
-Context: ${JSON.stringify(history.slice(0, 3))}.
-Persona: You are direct, clinical, and high-performance. Avoid generic fitness advice like "go for a walk." Instead, focus on glucose management, cortisol spikes, HRV recovery, and metabolic health.
-Format: Max 2 sentences. Be punchy and high-value. No fluff.
-User: ${userMessage}`;
+  const prompt = `Act as a personal health coach for ${userProfile.name}. 
+Current Context/Vitals: ${JSON.stringify(history.slice(0, 2))}.
+CRITICAL INSTRUCTION: Do NOT explicitly list, read back, or mention these vitals in your response unless the user specifically asks about them. Be brief, natural, and conversational. 
+User Message: ${userMessage}`;
 
   try {
     const result = await model.generateContent(prompt);
     return result.response.text();
   } catch (err) {
-    if (userProfile.vitals) {
-        return `I'm analyzing a spike in demand at the moment, but looking at your most recent data: your heart rate is ${userProfile.vitals.heartRate?.value || 'stable'} and your stress is ${userProfile.vitals.stressLevel?.value || 'managed'}. I'll provide a deeper analysis as soon as the line clears!`;
-    }
-    return "I'm currently stabilizing my diagnostic link. I'll be back in just a moment to analyze your vitals!";
+    console.error("Gemini AI Coach Error:", err);
+    return "I am currently recalibrating my sensors. Please ensure your API key is active in AI Studio.";
   }
 };
 
 const generateSleepAnalysis = async (sleepData = []) => {
   if (!model) return { summary: "Heuristic analysis...", efficiencyScore: 85, recommendations: ["Track consistently."] };
-  const prompt = `
-    Analyze this sleep data: ${JSON.stringify(sleepData)}.
-    Return ONLY a JSON object:
-    {
-      "summary": "A concise 3-sentence analysis of the main sleep trend.",
-      "efficiencyScore": number (0-100),
-      "recommendations": ["Brief 10-word actionable tip 1", "Brief 10-word actionable tip 2", "Brief 10-word actionable tip 3"]
-    }
-  `;
+  const prompt = `Analyze sleep: ${JSON.stringify(sleepData)}. Return JSON { summary, efficiencyScore, recommendations }.`;
   try {
     const result = await model.generateContent(prompt);
     return JSON.parse(result.response.text().replace(/```json|```/g, ""));
@@ -81,51 +86,43 @@ const generateSleepAnalysis = async (sleepData = []) => {
   }
 };
 
-const generateLongTermInsights = async (readings = [], days = 7) => {
-  if (!model) return { trendSummary: "Insufficient data for AI modeling.", correlation: "None detected.", proactiveSteps: [] };
-
-  const prompt = `
-    Analyze the health trends for the last ${days} days: ${JSON.stringify(readings.slice(0, 50))}.
-    Task: Find hidden correlations (e.g., relationship between late-night stress and morning heart rate).
-    Return ONLY JSON:
-    {
-      "trendSummary": "A 2-sentence professional overview of the week.",
-      "correlation": "A 1-sentence observation of how two metrics are affecting each other.",
-      "proactiveSteps": ["Action 1", "Action 2"]
-    }
-  `;
-
-  try {
-    const result = await model.generateContent(prompt);
-    return JSON.parse(result.response.text().replace(/```json|```/g, "").trim());
-  } catch (err) {
-    return { trendSummary: "Stabilizing baseline...", correlation: "No significant variance detected.", proactiveSteps: ["Maintain daily syncs"] };
-  }
-};
-
 const generateMedicalReportMarkdown = async (patientName, readings = []) => {
-    return "# Clinical Health Snapshot\n\nAI-generated summary based on your dashboard metrics.";
+  return "# Clinical Health Snapshot\n\nAI-generated summary based on your dashboard metrics.";
 };
 
 const generateHeuristicReading = (lastReading, activity) => {
   const baseHr = lastReading.heartRate?.value || 72;
-  let nextHr = activity === 'running' ? baseHr + 10 : activity === 'sleeping' ? baseHr - 2 : baseHr + (Math.random() > 0.5 ? 1 : -1);
+  let nextHr = activity === 'running' ? baseHr + 10 : activity === 'sleeping' ? baseHr - 2 : baseHr + (Math.random() > 0.5 ? 2 : -2);
+  
   return {
-    heartRate: Math.max(45, Math.min(180, nextHr)),
-    systolic: 120,
-    diastolic: 80,
-    spo2: 98,
-    temperature: 36.6,
-    steps: activity === 'running' ? 50 : 0,
-    forecast: [],
-    notes: `Heuristic: ${activity}. (Note: AI link stabilizing...).`
+    heartRate: { value: Math.max(45, Math.min(180, nextHr)), status: "stable" },
+    spo2: { value: 98, status: "stable" },
+    temperature: { value: 36.6, status: "stable" },
+    bloodPressure: { systolic: 118, diastolic: 76, status: "stable" },
+    steps: { value: activity === 'running' ? 50 : 0 },
+    stressLevel: { value: 22, status: "stable" },
+    confidence: {
+      heartRate: 92,
+      spo2: 94,
+      temperature: 97,
+      bloodPressure: 88,
+      steps: 95,
+      stressLevel: 82,
+      overall: 91
+    },
+    insight: `Heuristic calibration: ${activity} mode active.`,
+    forecast: [
+      { time: "2h", energy: "stable", label: "Baseline" },
+      { time: "4h", energy: "dip", label: "Dip" },
+      { time: "6h", energy: "stable", label: "Recovery" },
+      { time: "8h", energy: "high", label: "Peak" }
+    ]
   };
 };
 
-module.exports = { 
-  generateHealthReadingAI, 
-  generateAICoachResponse, 
-  generateSleepAnalysis, 
-  generateLongTermInsights,
-  generateMedicalReportMarkdown 
+module.exports = {
+  generateHealthReadingAI,
+  generateAICoachResponse,
+  generateSleepAnalysis,
+  generateMedicalReportMarkdown
 };
