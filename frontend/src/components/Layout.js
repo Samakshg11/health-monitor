@@ -27,15 +27,18 @@ const Layout = ({ children }) => {
     navigate('/');
   };
 
-  const navItems = [
-    { to: '/dashboard', icon: 'today', label: 'Today', hint: 'Live overview' },
-    { to: '/history', icon: 'activity', label: 'Activity', hint: 'Sessions and days' },
+  const mainNav = [
+    { to: '/dashboard', icon: 'today', label: 'Home', hint: 'Overview' },
+    { to: '/insights', icon: 'recovery', label: 'Intelligence', hint: 'AI recommendations' },
+    { to: '/history', icon: 'activity', label: 'History', hint: 'Past sessions' },
     { to: '/log', icon: 'heart', label: 'Check-In', hint: 'Manual vitals' },
-    { to: '/reports', icon: 'trends', label: 'Trends', hint: 'Weekly patterns' },
-    { to: '/insights', icon: 'recovery', label: 'Recovery', hint: 'Coaching and insights' },
-    { to: '/wearable', icon: 'device', label: 'Device', hint: 'Band and sync status' },
-    { to: '/alerts', icon: 'alerts', label: 'Alerts', hint: 'Important changes', badge: unreadCount },
-    { to: '/profile', icon: 'profile', label: 'You', hint: 'Goals and profile' },
+  ];
+
+  const systemNav = [
+    { to: '/alerts', icon: 'alerts', label: 'Alerts', hint: 'Pulse triggers', badge: unreadCount },
+    { to: '/wearable', icon: 'device', label: 'Devices', hint: 'Sync status' },
+    { to: '/profile', icon: 'profile', label: 'Settings', hint: 'Account & goals' },
+    { to: '/billing', icon: 'billing', label: 'Pro', hint: 'Membership' },
   ];
 
   return (
@@ -50,17 +53,35 @@ const Layout = ({ children }) => {
         </div>
 
         <div className="sidebar-panel">
-          <div className="sidebar-panel-label">Today</div>
-          <div className="sidebar-panel-value">{liveAlerts.length > 0 ? 'Attention needed' : 'In rhythm'}</div>
-          <div className="sidebar-panel-meta">{liveAlerts.length > 0 ? `${liveAlerts.length} live alert${liveAlerts.length > 1 ? 's' : ''}` : 'Syncing your latest movement and vitals'}</div>
+          <div className="sidebar-panel-label">Status</div>
+          <div className="sidebar-panel-value">{liveAlerts.length > 0 ? 'Action Needed' : 'In Rhythm'}</div>
+          <div className="sidebar-panel-meta">
+            {liveAlerts.length > 0 ? `${liveAlerts.length} alert(s) detected` : 'Systems performing nominal'}
+          </div>
         </div>
 
         <nav className="sidebar-nav">
-          {navItems.map((item) => (
+          <div className="nav-group-label">Daily</div>
+          {mainNav.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+            >
+              <span className="nav-icon"><TrackerIcon name={item.icon} size={18} /></span>
+              <span className="nav-copy">
+                <strong>{item.label}</strong>
+                <small>{item.hint}</small>
+              </span>
+            </NavLink>
+          ))}
+
+          <div className="nav-group-label" style={{ marginTop: 24 }}>System</div>
+          {systemNav.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) => `nav-item nav-item-secondary ${isActive ? 'active' : ''}`}
             >
               <span className="nav-icon"><TrackerIcon name={item.icon} size={18} /></span>
               <span className="nav-copy">
@@ -73,13 +94,6 @@ const Layout = ({ children }) => {
         </nav>
 
         <div className="sidebar-bottom">
-          <NavLink to="/billing" className={({ isActive }) => `nav-item nav-item-secondary ${isActive ? 'active' : ''}`}>
-            <span className="nav-icon"><TrackerIcon name="billing" size={18} /></span>
-            <span className="nav-copy">
-              <strong>Membership</strong>
-              <small>Plan and usage</small>
-            </span>
-          </NavLink>
           {user && (
             <div className="sidebar-user">
               <div className="sidebar-user-avatar">
@@ -87,17 +101,10 @@ const Layout = ({ children }) => {
               </div>
               <div>
                 <div className="sidebar-user-name">{user.name}</div>
-                <div className="sidebar-user-email">{user.email}</div>
+                <button className="logout-btn" onClick={handleLogout}>Log out</button>
               </div>
             </div>
           )}
-          <button className="nav-item" onClick={handleLogout}>
-            <span className="nav-icon"><TrackerIcon name="logout" size={18} /></span>
-            <span className="nav-copy">
-              <strong>Logout</strong>
-              <small>End current session</small>
-            </span>
-          </button>
         </div>
       </aside>
 

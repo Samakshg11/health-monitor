@@ -99,6 +99,14 @@ const healthReadingSchema = new mongoose.Schema(
       enum: ['balanced', 'push', 'recovery'],
       default: 'balanced',
     },
+    forecast: [
+      {
+        time: { type: String },
+        energy: { type: String },
+        label: { type: String },
+        action: { type: String },
+      },
+    ],
     notes: { type: String },
     recordedAt: {
       type: Date,

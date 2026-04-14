@@ -15,6 +15,7 @@ const {
   generateHealthReadingAI, 
   generateAICoachResponse, 
   generateSleepAnalysis, 
+  generateLongTermInsights,
   generateMedicalReportMarkdown 
 } = require('../utils/aiSimulator');
 
@@ -545,17 +546,19 @@ router.get('/insights', protect, async (req, res) => {
     if (avgStress > 55) recommendations.push('Stress trend is elevated; include breathing sessions and lighter recovery blocks.');
     if (!recommendations.length) recommendations.push('Current trends look stable. Maintain routine and keep monitoring.');
 
+    const aiInsights = await generateLongTermInsights(readings, days);
+
     const insights = {
       score,
       status: score >= 80 ? 'stable' : score >= 60 ? 'watch' : 'needs-attention',
       riskLevel,
-      summary:
-        riskLevel === 'low'
+      summary: aiInsights.trendSummary || (riskLevel === 'low'
           ? 'Vitals and activity trends are stable with good adherence.'
           : riskLevel === 'moderate'
             ? 'Some signals need closer monitoring to prevent deterioration.'
-            : 'Multiple risk signals detected; prioritize intervention and follow-up.',
-      recommendations,
+            : 'Multiple risk signals detected; prioritize intervention and follow-up.'),
+      recommendations: recommendations.concat(aiInsights.proactiveSteps || []),
+      correlation: aiInsights.correlation,
       metrics: {
         daysReviewed: days,
         readingsCount: readings.length,
@@ -623,6 +626,7 @@ router.post('/generate-ai', protect, async (req, res) => {
         primarySource: 'AI-Generated Health Model',
         confidenceTier: 'high'
       },
+      forecast: aiOutput.forecast || [],
       notes: aiOutput.notes || 'AI generated health snapshot'
     };
 

@@ -5,11 +5,11 @@ const PLAN_CONFIG = {
     monthlyPrice: 0,
     yearlyPrice: 0,
     limits: {
-      readingsPerMonth: 300,
-      exportsPerMonth: 2,
+      readingsPerMonth: null,
+      exportsPerMonth: null,
       teamMembers: 1,
       liveSessionEnabled: true,
-      aiInsightsEnabled: false,
+      aiInsightsEnabled: true,
     },
   },
   growth: {

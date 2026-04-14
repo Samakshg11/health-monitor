@@ -18,7 +18,7 @@ import { getLatestReading, getReadings, getFitnessToday, getBillingCurrent, gene
 import { ProgressRing, TrackerIcon } from '../components/TrackerUI';
 import toast from 'react-hot-toast';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 const AICoach = ({ history, user }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -82,7 +82,7 @@ const AICoach = ({ history, user }) => {
         `${r.temperature?.value || '--'}C`
       ]);
       
-      doc.autoTable({
+      autoTable(doc, {
         startY: doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : 200,
         head: [['Time', 'HR', 'BP', 'SpO2', 'Temp']],
         body: tableData,
@@ -170,12 +170,13 @@ const metricCards = (latest, fallbackReading = null) => {
     {
       key: 'heart-rate',
       icon: 'heart',
+      iconClass: 'heartbeat-icon',
       label: 'Heart rate',
       value: heartRate?.value ?? '—',
       unit: 'BPM',
       trend: toneForStatus(heartRate?.status).label,
       status: heartRate?.status,
-      confidence: latest.confidence?.heartRate,
+      confidence: primary?.confidence?.heartRate,
     },
     {
       key: 'oxygen',
@@ -185,7 +186,7 @@ const metricCards = (latest, fallbackReading = null) => {
       unit: '%',
       trend: toneForStatus(spo2?.status).label,
       status: spo2?.status,
-      confidence: latest.confidence?.spo2,
+      confidence: primary?.confidence?.spo2,
     },
     {
       key: 'temp',
@@ -195,7 +196,7 @@ const metricCards = (latest, fallbackReading = null) => {
       unit: '°C',
       trend: toneForStatus(temp?.status).label,
       status: temp?.status,
-      confidence: latest.confidence?.temperature,
+      confidence: primary?.confidence?.temperature,
     },
     {
       key: 'stress',
@@ -215,7 +216,7 @@ const metricCards = (latest, fallbackReading = null) => {
       unit: 'mmHg',
       trend: toneForStatus(bloodPressure?.status).label,
       status: bloodPressure?.status,
-      confidence: latest.confidence?.bloodPressure,
+      confidence: primary?.confidence?.bloodPressure,
     },
     {
       key: 'sleep',
@@ -416,7 +417,7 @@ const buildCompositeBodyReading = (readings = []) => {
 const Dashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, tracking, enableTracking, disableTracking, verification, wearable } = useAuth();
+  const { user, tracking, enableTracking, verification, wearable } = useAuth();
   const { latestReading: socketReading, liveAlerts } = useSocket();
   const [latest, setLatest] = useState(null);
   const [recentReadings, setRecentReadings] = useState([]);
@@ -522,14 +523,13 @@ const Dashboard = () => {
         // Socket will update the dashboard automatically
       } catch (err) {
         console.error('AI Generation failed', err);
-        setIsAiMode(false);
-        toast.error('AI Link lost. Check API key.');
+        toast.error('AI Link stabilizing... Retrying in 60s.');
       } finally {
         setIsGenerating(false);
       }
     };
 
-    const id = setInterval(tick, 10000); // Generate every 10s in AI mode
+    const id = setInterval(tick, 60000); // Generate every 60s to ensure Coach has maximum quota priority
     tick(); // Initial call
     return () => clearInterval(id);
   }, [isAiMode, aiActivity, isGenerating]);
@@ -568,16 +568,7 @@ const Dashboard = () => {
   const billingUsageLabel = billingSummary?.usage?.readings?.limit === null
     ? `${billingSummary?.usage?.readings?.used || 0} used`
     : `${billingSummary?.usage?.readings?.used || 0}/${billingSummary?.usage?.readings?.limit || 0} used`;
-  const lastLivePostLabel = verification?.lastPostedAt
-    ? formatDistanceToNow(new Date(verification.lastPostedAt), { addSuffix: true })
-    : 'No live post yet';
-  const trackingStatusLabel = !tracking.ready
-    ? 'Checking tracker status'
-    : tracking.enabled
-      ? (verification?.lastPostStatus === 'error' ? 'Tracking on, post failing' : 'Tracking on')
-      : 'Tracking off';
-  const geoLabel = wearable?.sensorStatus?.geoPermission || 'unknown';
-  const motionLabel = wearable?.sensorStatus?.motionPermission || 'unknown';
+
 
   const highlights = [
     {
@@ -632,7 +623,6 @@ const Dashboard = () => {
           ? `${bodySourceDetails?.primarySource || 'Manual check-ins'} are currently driving this view. Start phone tracking if you want movement to update live through the day.`
           : `${movementReading?.sourceDetails?.movementSource || 'Phone motion and GPS'} keep movement live, while stronger body signals come from manual check-ins or a connected source.`;
   const selectedGoal = goalCopy[onboarding.trackingGoal] || goalCopy.fitness;
-  const selectedExperience = experienceCopy[onboarding.experienceLevel] || experienceCopy.beginner;
   const confidenceTier = sourceDetails?.confidenceTier || (latest?.confidence?.overall >= 78 ? 'high' : latest?.confidence?.overall >= 56 ? 'medium' : 'low');
   const bodyConfidenceTier = bodySourceDetails?.confidenceTier || (bodyReading?.confidence?.overall >= 78 ? 'high' : bodyReading?.confidence?.overall >= 56 ? 'medium' : 'low');
   const supportedMetrics = sourceDetails?.supportedMetrics || {};
@@ -751,78 +741,133 @@ const Dashboard = () => {
     <div>
       <div className="page-header tracker-header">
         <div>
-          <span className="eyebrow">Daily summary</span>
+          <span className="eyebrow">VitalWatch Dashboard</span>
           <h1>{greeting}, {firstName}</h1>
-          <p>{format(new Date(), 'EEEE, MMMM d')} · {selectedGoal.headline}. {selectedExperience}</p>
+          <p>{format(new Date(), 'EEEE, MMMM d')} · Personal health companion</p>
         </div>
         <div className="tracker-header-actions">
+           <span className="tracker-sync-pill" style={{ marginRight: 16, fontSize: '0.75rem', opacity: 0.7 }}>
+             Updated {updateLabel}
+          </span>
           <span className="live-badge"><span className="live-dot" /> Syncing live</span>
-          <span className="tracker-sync-pill"><TrackerIcon name="clock" size={14} /> Updated {updateLabel}</span>
         </div>
       </div>
 
       <div className="page-content tracker-dashboard">
-        <section className="card tracker-control-card">
-          <div>
-            <span className="eyebrow">Live tracking</span>
-            <h3>{trackingStatusLabel}</h3>
-            <p className="tracker-flow-summary">
-              Last live post: {lastLivePostLabel}. Motion permission is {motionLabel} and location permission is {geoLabel}.
-            </p>
+        {/* Intelligence Hero */}
+        <section className="card intelligence-hero">
+            <div className="intelligence-content">
+                <span className="eyebrow" style={{ color: 'var(--accent-purple)' }}>Daily Insight</span>
+                <h2>{sleepAnalysis?.summary ? "Your Analysis is Ready" : "Calibrating AI..."}</h2>
+                <p className="intelligence-text">
+                    {sleepAnalysis?.summary || "Welcome back, we're currently analyzing your latest sync data and heart rate variability to prepare your daily briefing."}
+                </p>
+                {sleepAnalysis?.recommendations && (
+                    <div className="intelligence-actions">
+                        {sleepAnalysis.recommendations.slice(0, 2).map((rec, i) => (
+                            <span key={i} className="intelligence-pill">{rec}</span>
+                        ))}
+                    </div>
+                )}
+            </div>
+            <div className="intelligence-visual">
+                <div className="readiness-gauge">
+                    <ProgressRing value={readinessScore} color="var(--accent-purple)" label="Readiness" />
+                </div>
+            </div>
+        </section>
+
+        <section className={`card tracker-control-card ai-active`} style={{ border: '1px solid var(--accent-blue)', marginBottom: 24, background: 'rgba(52, 152, 219, 0.05)' }}>
+            <div>
+              <span className="eyebrow" style={{ color: 'var(--accent-blue)' }}>Intelligence Engine Control</span>
+              <h3>{isAiMode ? `Currently Simulating: ${aiActivity}` : 'AI Data Link Idle'}</h3>
+              <p className="tracker-flow-summary">
+                {isAiMode 
+                  ? "Your biometric pulse is being driven by the Gemma-3 Performance Engine based on your selected activity state."
+                  : "Connect the AI Stream to simulate real-time biometric data patterns for your currently selected lifestyle context."}
+              </p>
+            </div>
+            <div className="tracker-control-actions" style={{ gap: 12 }}>
+                <select 
+                  className="btn btn-secondary btn-sm" 
+                  value={aiActivity} 
+                  onChange={(e) => setAiActivity(e.target.value)}
+                  style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-primary)', width: 'auto' }}
+                >
+                  <option value="sitting">🧘 Sitting</option>
+                  <option value="walking">🚶 Walking</option>
+                  <option value="running">🏃 Running</option>
+                  <option value="sleeping">😴 Sleeping</option>
+                  <option value="recovering">🔋 Recovering</option>
+                </select>
+              <button 
+                type="button" 
+                className={`btn ${isAiMode ? 'btn-secondary' : 'btn-primary'} btn-sm`} 
+                style={{ width: 'auto', minWidth: '140px' }} 
+                onClick={() => {
+                  setIsAiMode(!isAiMode);
+                  if (!isAiMode) toast.success('AI Health Stream synchronized');
+                }}
+              >
+                {isAiMode ? 'Disconnect Link' : 'Synchronize AI Link'}
+              </button>
+            </div>
+          </section>
+
+        {/* Essential Vitals Grid */}
+        {/* Predictive AI Timeline */}
+        <section className="card predictive-timeline-card">
+          <div className="timeline-header">
+            <div>
+              <span className="eyebrow" style={{ color: 'var(--accent-green)' }}>Prediction Engine</span>
+              <h3>Forecasted Energy Path</h3>
+            </div>
+            <span className="tracker-pill" style={{ background: 'rgba(52, 152, 219, 0.1)', color: 'var(--accent-blue)' }}>Live Bio-Sync</span>
           </div>
-          <div className="tracker-control-actions">
-            {tracking.enabled ? (
-              <button type="button" className="btn btn-secondary btn-sm" style={{ width: 'auto' }} onClick={disableTracking}>
-                Stop tracking
-              </button>
-            ) : (
-              <button type="button" className="btn btn-primary btn-sm" style={{ width: 'auto' }} onClick={() => enableTracking()}>
-                Start phone tracking
-              </button>
-            )}
-            <Link to="/history" className="btn btn-secondary btn-sm" style={{ width: 'auto' }}>
-              Open history
-            </Link>
+          <div className="timeline-row">
+            {(latest?.forecast?.length ? latest.forecast : [
+              { time: '2h', energy: 'stable', label: 'Baseline', action: 'Maintain current activity' },
+              { time: '4h', energy: 'dip', label: 'Energy Dip', action: 'Rest recommended' },
+              { time: '6h', energy: 'stable', label: 'Recovery', action: 'Light movement' },
+              { time: '8h', energy: 'high', label: 'Peak State', action: 'Optimal for deep work' }
+            ]).map((node, i) => (
+              <div key={i} className={`timeline-node energy-${node.energy}`}>
+                <span className="node-time">{node.time}</span>
+                <div className="node-dot"></div>
+                <span className="node-label">{node.label}</span>
+                <div className="node-tooltip">
+                   <strong>Tip:</strong> {node.action}
+                </div>
+              </div>
+            ))}
           </div>
         </section>
 
-        <section className={`card tracker-control-card ${isAiMode ? 'ai-active' : ''}`} style={{ border: isAiMode ? '1px solid var(--accent-blue)' : 'none' }}>
-          <div>
-            <span className="eyebrow" style={{ color: isAiMode ? 'var(--accent-blue)' : 'inherit' }}>AI Health Simulator</span>
-            <h3>{isAiMode ? `Simulating: ${aiActivity}` : 'Virtual AI Sensor'}</h3>
-            <p className="tracker-flow-summary">
-              {isAiMode 
-                ? "Gemini is currently driving your health vitals in real-time based on your simulated activity."
-                : "Switch to AI Mode to let an LLM generate realistic health data instead of random mock signals."}
-            </p>
-          </div>
-          <div className="tracker-control-actions" style={{ gap: 8 }}>
-            {isAiMode && (
-              <select 
-                className="btn btn-secondary btn-sm" 
-                value={aiActivity} 
-                onChange={(e) => setAiActivity(e.target.value)}
-                style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-              >
-                <option value="sitting">🧘 Sitting</option>
-                <option value="walking">🚶 Walking</option>
-                <option value="running">🏃 Running</option>
-                <option value="sleeping">😴 Sleeping</option>
-                <option value="recovering">🔋 Recovering</option>
-              </select>
-            )}
-            <button 
-              type="button" 
-              className={`btn ${isAiMode ? 'btn-secondary' : 'btn-primary'} btn-sm`} 
-              style={{ width: 'auto' }} 
-              onClick={() => {
-                setIsAiMode(!isAiMode);
-                if (!isAiMode) toast.success('AI Health Stream started');
-              }}
-            >
-              {isAiMode ? 'Stop AI Mode' : 'Start AI Mode'}
-            </button>
-          </div>
+        <section className="vitals-primary-grid">
+            {metricCards(bodyReading, latest).slice(0, 3).map((metric) => {
+                const rendered = getMetricPresentation({
+                    metricKey: metric.key === 'heart-rate' ? 'heart' : metric.key,
+                    metric,
+                    fallbackUnit: metric.unit,
+                    sourceMode: bodySourceMode,
+                    sourceDetails: { ...bodySourceDetails, overallConfidence: bodyReading?.confidence?.overall },
+                });
+                return (
+                    <article key={metric.key} className={`card vital-mini-card status-${metric.status || 'normal'}`}>
+                        <div className="vital-header">
+                            <TrackerIcon name={metric.icon} size={16} className={metric.iconClass} />
+                            <span>{metric.label}</span>
+                        </div>
+                        <div className="vital-body">
+                            <strong>{rendered.value}</strong>
+                            <small>{rendered.unit}</small>
+                        </div>
+                        <div className="vital-footer">
+                            <span style={{ color: toneForStatus(metric.status).color }}>{rendered.trend}</span>
+                        </div>
+                    </article>
+                );
+            })}
         </section>
 
         {user?.onboarding?.completed !== true && (
