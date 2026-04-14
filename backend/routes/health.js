@@ -605,17 +605,17 @@ router.post('/generate-ai', protect, async (req, res) => {
 
     // Map AI output to model format
     const readingPayload = {
-      heartRate: { value: aiOutput.heartRate?.value || aiOutput.heartRate },
+      heartRate: { value: aiOutput.heartRate?.value ?? aiOutput.heartRate },
       bloodPressure: {
-        systolic: aiOutput.bloodPressure?.systolic,
-        diastolic: aiOutput.bloodPressure?.diastolic
+        systolic: aiOutput.bloodPressure?.systolic ?? aiOutput.systolic,
+        diastolic: aiOutput.bloodPressure?.diastolic ?? aiOutput.diastolic
       },
-      spo2: { value: aiOutput.spo2?.value || aiOutput.spo2 },
-      temperature: { value: aiOutput.temperature?.value || aiOutput.temperature },
-      steps: { value: aiOutput.steps?.value || aiOutput.steps || 0 },
-      hydration: { value: aiOutput.hydration?.value || aiOutput.hydration },
-      sleepScore: { value: aiOutput.sleepScore?.value || aiOutput.sleepScore },
-      stressLevel: { value: aiOutput.stressLevel?.value || aiOutput.stressLevel },
+      spo2: { value: aiOutput.spo2?.value ?? aiOutput.spo2 },
+      temperature: { value: aiOutput.temperature?.value ?? aiOutput.temperature },
+      steps: { value: aiOutput.steps?.value ?? aiOutput.steps ?? 0 },
+      hydration: { value: aiOutput.hydration?.value ?? aiOutput.hydration },
+      sleepScore: { value: aiOutput.sleepScore?.value ?? aiOutput.sleepScore },
+      stressLevel: { value: aiOutput.stressLevel?.value ?? aiOutput.stressLevel },
       source: 'device', // Mark as device for "AI Sensor" simulation
       sourceDetails: {
         mode: 'band_plus_phone',
