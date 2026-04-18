@@ -95,6 +95,7 @@ const Layout = ({ children }) => {
 
         <div className="sidebar-bottom">
           {user && (
+            <>
               <div className="sidebar-user">
                 <div className="sidebar-user-avatar">
                   {user.name?.charAt(0).toUpperCase()}
@@ -111,6 +112,7 @@ const Layout = ({ children }) => {
                   <small>End session</small>
                 </span>
               </button>
+            </>
           )}
         </div>
       </aside>
