@@ -448,18 +448,23 @@ const Dashboard = () => {
 
   const loadData = useCallback(async () => {
     try {
-      const [latestRes, readingsRes, billingRes] = await Promise.all([
+      const [latestRes, readingsRes, billingRes, sleepRes, fitnessRes] = await Promise.all([
         getLatestReading(),
         getReadings({ limit: 20 }),
         getBillingCurrent(),
+        getSleepAnalysis(),
+        getFitnessToday(),
       ]);
 
       setLatest(latestRes.data.reading);
       setBillingSummary(billingRes.data);
+      setSleepAnalysis(sleepRes.data.analysis);
+      setFitnessSummary(fitnessRes.data.summary);
+
       const recentReadings = readingsRes.data.readings || [];
       setRecentReadings(recentReadings);
 
-      const readings = recentReadings.reverse();
+      const readings = [...recentReadings].reverse();
       setChartData(
         readings.map((reading) => ({
           time: format(new Date(reading.recordedAt), 'HH:mm'),
@@ -469,15 +474,12 @@ const Dashboard = () => {
           steps: reading.steps?.value,
         }))
       );
-
-      // Fetch AI Sleep Analysis
-      const sleepRes = await getSleepAnalysis();
-      setSleepAnalysis(sleepRes.data.analysis);
-
-      await loadFitnessSummary();
-    } catch {}
-    setLoading(false);
-  }, [loadFitnessSummary]);
+    } catch (err) {
+      console.error('Error loading dashboard data:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     loadData();
