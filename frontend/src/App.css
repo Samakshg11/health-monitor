@@ -4046,19 +4046,9 @@ body {
     margin-top: 12px;
 }
 
-.logout-btn {
-    background: transparent;
-    border: none;
-    color: var(--accent-red);
-    font-size: 0.75rem;
-    font-weight: 600;
-    cursor: pointer;
-    padding: 0;
-    margin-top: 4px;
-}
-
-.logout-btn:hover {
-    text-decoration: underline;
+.nav-item-logout:hover {
+    background: rgba(230, 57, 70, 0.12);
+    border-color: rgba(230, 57, 70, 0.25);
 }
 
 /* Intelligence Lab Styles */
