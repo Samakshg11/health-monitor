@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { useAuth } from '../context/AuthContext';
 
 const capabilities = [
   {
@@ -223,6 +224,7 @@ const getIntensityBand = (heartRate) => {
 };
 
 const Landing = () => {
+  const { user } = useAuth();
   const [openFaq, setOpenFaq] = useState(0);
   const [snapshot, setSnapshot] = useState({ age: 36, systolic: 124, heartRate: 74 });
   const [billing, setBilling] = useState('monthly');
@@ -506,15 +508,23 @@ const Landing = () => {
           <a href="#faq">FAQ</a>
         </nav>
         <nav className="landing-topbar-actions">
-          <Link to="/login" className="landing-nav-link">
-            Sign In
-          </Link>
-          <button type="button" className="landing-nav-link" onClick={() => setDemoOpen(true)}>
-            Book Demo
-          </button>
-          <Link to="/register" className="btn btn-primary landing-nav-btn">
-            Get Started
-          </Link>
+          {user ? (
+            <Link to="/dashboard" className="btn btn-primary landing-nav-btn">
+              Go to Dashboard
+            </Link>
+          ) : (
+            <>
+              <Link to="/login" className="landing-nav-link">
+                Sign In
+              </Link>
+              <button type="button" className="landing-nav-link" onClick={() => setDemoOpen(true)}>
+                Book Demo
+              </button>
+              <Link to="/register" className="btn btn-primary landing-nav-btn">
+                Get Started
+              </Link>
+            </>
+          )}
         </nav>
       </header>
 
@@ -531,12 +541,20 @@ const Landing = () => {
         </p>
 
         <div className="landing-cta">
-          <Link to="/register" className="btn btn-primary landing-btn">
-            Start Free Setup
-          </Link>
-          <Link to="/login" className="btn btn-secondary landing-btn">
-            Open Existing Account
-          </Link>
+          {user ? (
+            <Link to="/dashboard" className="btn btn-primary landing-btn">
+              Back to Dashboard
+            </Link>
+          ) : (
+            <>
+              <Link to="/register" className="btn btn-primary landing-btn">
+                Start Free Setup
+              </Link>
+              <Link to="/login" className="btn btn-secondary landing-btn">
+                Open Existing Account
+              </Link>
+            </>
+          )}
         </div>
         <p className="landing-cta-note">Create your account, finish a quick setup, and start in phone-first mode without paid integrations.</p>
 
