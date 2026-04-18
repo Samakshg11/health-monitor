@@ -448,18 +448,15 @@ const Dashboard = () => {
 
   const loadData = useCallback(async () => {
     try {
-      const [latestRes, readingsRes, billingRes, sleepRes, fitnessRes] = await Promise.all([
+      // 1. Load core tracker data first (fast)
+      const [latestRes, readingsRes, billingRes] = await Promise.all([
         getLatestReading(),
         getReadings({ limit: 20 }),
         getBillingCurrent(),
-        getSleepAnalysis(),
-        getFitnessToday(),
       ]);
 
       setLatest(latestRes.data.reading);
       setBillingSummary(billingRes.data);
-      setSleepAnalysis(sleepRes.data.analysis);
-      setFitnessSummary(fitnessRes.data.summary);
 
       const recentReadings = readingsRes.data.readings || [];
       setRecentReadings(recentReadings);
@@ -474,9 +471,23 @@ const Dashboard = () => {
           steps: reading.steps?.value,
         }))
       );
+
+      // 2. Clear loading state so user can see basic tracker
+      setLoading(false);
+
+      // 3. Load heavy AI analysis and fitness summaries in background (slow)
+      Promise.all([
+        getSleepAnalysis(),
+        getFitnessToday()
+      ]).then(([sleepRes, fitnessRes]) => {
+        setSleepAnalysis(sleepRes.data.analysis);
+        setFitnessSummary(fitnessRes.data.summary);
+      }).catch(err => {
+        console.warn('Background data load failed:', err);
+      });
+
     } catch (err) {
-      console.error('Error loading dashboard data:', err);
-    } finally {
+      console.error('Initial tracker load failed:', err);
       setLoading(false);
     }
   }, []);
