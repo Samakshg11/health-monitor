@@ -95,21 +95,22 @@ const Layout = ({ children }) => {
 
         <div className="sidebar-bottom">
           {user && (
-            <div className="sidebar-user">
-              <div className="sidebar-user-avatar">
-                {user.name?.charAt(0).toUpperCase()}
+              <div className="sidebar-user">
+                <div className="sidebar-user-avatar">
+                  {user.name?.charAt(0).toUpperCase()}
+                </div>
+                <div className="sidebar-user-info">
+                  <div className="sidebar-user-name">{user.name}</div>
+                  <div className="sidebar-user-status">Active Session</div>
+                </div>
               </div>
-              <div>
-                <div className="sidebar-user-name">{user.name}</div>
-                <button className="nav-item nav-item-logout" onClick={handleLogout} style={{ marginTop: 12, width: '100%' }}>
-                  <span className="nav-icon" style={{ color: 'var(--accent-red)' }}><TrackerIcon name="logout" size={18} /></span>
-                  <span className="nav-copy">
-                    <strong>Log out</strong>
-                    <small>End session</small>
-                  </span>
-                </button>
-              </div>
-            </div>
+              <button className="nav-item nav-item-logout" onClick={handleLogout} style={{ marginTop: 8 }}>
+                <span className="nav-icon" style={{ color: 'var(--accent-red)' }}><TrackerIcon name="logout" size={18} /></span>
+                <span className="nav-copy">
+                  <strong>Log out</strong>
+                  <small>End session</small>
+                </span>
+              </button>
           )}
         </div>
       </aside>
