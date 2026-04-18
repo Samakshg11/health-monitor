@@ -2025,9 +2025,10 @@ body {
   color: var(--text-primary);
 }
 
-.sidebar-user-email {
+.sidebar-user-status {
   font-size: 0.7rem;
-  color: var(--text-muted);
+  color: var(--accent-green);
+  opacity: 0.8;
 }
 
 .main-content {
