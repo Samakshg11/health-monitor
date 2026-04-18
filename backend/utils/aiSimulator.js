@@ -49,8 +49,11 @@ const generateHealthReadingAI = async (context = {}) => {
   try {
     const result = await model.generateContent(prompt);
     const text = result.response.text();
-    return JSON.parse(text.replace(/```json|```/g, "").trim());
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("No JSON found in response");
+    return JSON.parse(jsonMatch[0]);
   } catch (err) {
+    console.error("AI Generation Error:", err);
     return generateHeuristicReading(lastReading, activity);
   }
 };
@@ -71,17 +74,21 @@ User Message: ${userMessage}`;
     return result.response.text();
   } catch (err) {
     console.error("Gemini AI Coach Error:", err);
-    return "I am currently recalibrating my sensors. Please ensure your API key is active in AI Studio.";
+    return "I am currently recalibrating my sensors. (Error: " + err.message + ")";
   }
 };
 
 const generateSleepAnalysis = async (sleepData = []) => {
   if (!model) return { summary: "Heuristic analysis...", efficiencyScore: 85, recommendations: ["Track consistently."] };
-  const prompt = `Analyze sleep: ${JSON.stringify(sleepData)}. Return JSON { summary, efficiencyScore, recommendations }.`;
+  const prompt = `Analyze sleep: ${JSON.stringify(sleepData)}. Return JSON { "summary": string, "efficiencyScore": number, "recommendations": string[] }.`;
   try {
     const result = await model.generateContent(prompt);
-    return JSON.parse(result.response.text().replace(/```json|```/g, ""));
+    const text = result.response.text();
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("No JSON found in response");
+    return JSON.parse(jsonMatch[0]);
   } catch (err) {
+    console.error("Sleep Analysis Error:", err);
     return { summary: "Heuristic analysis active...", efficiencyScore: 82, recommendations: ["Keep consistent tracking."] };
   }
 };
