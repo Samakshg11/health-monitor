@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const pool = require('../db/postgres');
 
 const protect = async (req, res, next) => {
   let token;
@@ -14,10 +14,16 @@ const protect = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await User.findById(decoded.id);
+    const { rows } = await pool.query('SELECT id, email, name, created_at FROM users WHERE id = $1', [decoded.id]);
+    req.user = rows[0];
+    
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'User not found' });
     }
+    
+    // Map _id to id to avoid breaking other routes/queries referencing req.user._id
+    req.user._id = req.user.id;
+    
     next();
   } catch (err) {
     return res.status(401).json({ success: false, message: 'Token invalid or expired' });

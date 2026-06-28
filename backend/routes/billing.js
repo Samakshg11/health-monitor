@@ -1,5 +1,6 @@
 const express = require('express');
-const User = require('../models/User');
+const pool = require('../db/postgres');
+const Profile = require('../models/Profile');
 const HealthReading = require('../models/HealthReading');
 const { protect } = require('../middleware/auth');
 const { PLAN_CONFIG, getPlan } = require('../config/plans');
@@ -49,16 +50,26 @@ router.get('/plans', protect, (req, res) => {
 // @GET /api/billing/current
 router.get('/current', protect, async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).select('subscription email name');
-    const subscription = user.subscription || {};
+    const { rows } = await pool.query('SELECT name, email FROM users WHERE id = $1', [req.user.id]);
+    const userRow = rows[0];
+    if (!userRow) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    let profile = await Profile.findOne({ userId: req.user.id });
+    if (!profile) {
+      profile = await Profile.create({ userId: req.user.id });
+    }
+
+    const subscription = profile.subscription || {};
     const plan = getPlan(subscription.plan);
-    const usage = await getUsage(user._id, subscription.plan || 'starter');
+    const usage = await getUsage(req.user.id, subscription.plan || 'starter');
 
     res.json({
       success: true,
       customer: {
-        name: user.name,
-        email: user.email,
+        name: userRow.name,
+        email: userRow.email,
       },
       subscription: {
         ...subscription.toObject?.(),
@@ -85,8 +96,8 @@ router.post('/subscribe', protect, async (req, res) => {
     if (billingCycle === 'annual') renewsAt.setFullYear(renewsAt.getFullYear() + 1);
     else renewsAt.setMonth(renewsAt.getMonth() + 1);
 
-    const user = await User.findByIdAndUpdate(
-      req.user._id,
+    const profile = await Profile.findOneAndUpdate(
+      { userId: req.user.id },
       {
         'subscription.plan': planId,
         'subscription.billingCycle': billingCycle,
@@ -94,15 +105,15 @@ router.post('/subscribe', protect, async (req, res) => {
         'subscription.startedAt': now,
         'subscription.renewsAt': renewsAt,
       },
-      { new: true }
-    ).select('subscription');
+      { new: true, upsert: true }
+    );
 
-    const usage = await getUsage(req.user._id, planId);
+    const usage = await getUsage(req.user.id, planId);
 
     res.json({
       success: true,
       message: `Plan upgraded to ${PLAN_CONFIG[planId].label}`,
-      subscription: user.subscription,
+      subscription: profile.subscription,
       usage,
     });
   } catch (err) {

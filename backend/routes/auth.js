@@ -1,6 +1,8 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const bcrypt = require('bcryptjs');
+const pool = require('../db/postgres');
+const Profile = require('../models/Profile');
 const { protect } = require('../middleware/auth');
 
 const router = express.Router();
@@ -8,18 +10,18 @@ const router = express.Router();
 const signToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' });
 
-const serializeUser = (user) => ({
-  id: user._id,
+const serializeUser = (user, profile = {}) => ({
+  id: user.id || user._id,
   name: user.name,
   email: user.email,
-  age: user.age,
-  gender: user.gender,
-  weight: user.weight,
-  height: user.height,
-  dailyGoals: user.dailyGoals,
-  subscription: user.subscription,
-  organization: user.organization,
-  onboarding: user.onboarding,
+  age: profile?.age,
+  gender: profile?.gender,
+  weight: profile?.weight,
+  height: profile?.height,
+  dailyGoals: profile?.dailyGoals || { steps: 10000, activeMinutes: 60, hydration: 100 },
+  subscription: profile?.subscription || { plan: 'starter', billingCycle: 'monthly', status: 'active' },
+  organization: profile?.organization || {},
+  onboarding: profile?.onboarding || { completed: false },
 });
 
 // @POST /api/auth/register
@@ -33,32 +35,44 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Name, email, and password are required' });
     }
 
-    const existing = await User.findOne({ email: normalizedEmail });
-    if (existing) {
+    if (password.length < 6) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters long' });
+    }
+
+    // Check if user already exists in PostgreSQL
+    const existingCheck = await pool.query('SELECT id FROM users WHERE email = $1', [normalizedEmail]);
+    if (existingCheck.rows.length > 0) {
       return res.status(400).json({ success: false, message: 'Email already registered' });
     }
 
-    const user = await User.create({
-      name: normalizedName,
-      email: normalizedEmail,
-      password,
+    // Hash password
+    const password_hash = await bcrypt.hash(password, 12);
+
+    // Insert user into PostgreSQL
+    const userRes = await pool.query(
+      'INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING *',
+      [normalizedName, normalizedEmail, password_hash]
+    );
+    const user = userRes.rows[0];
+
+    // Create profile in MongoDB
+    const profile = await Profile.create({
+      userId: user.id,
       ...(age !== undefined ? { age } : {}),
       ...(gender ? { gender } : {}),
       ...(weight !== undefined ? { weight } : {}),
       ...(height !== undefined ? { height } : {}),
       ...(organization ? { organization } : {}),
     });
-    const token = signToken(user._id);
+
+    const token = signToken(user.id);
 
     res.status(201).json({
       success: true,
       token,
-      user: serializeUser(user),
+      user: serializeUser(user, profile),
     });
   } catch (err) {
-    if (err.name === 'ValidationError') {
-      return res.status(400).json({ success: false, message: err.message });
-    }
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -73,16 +87,25 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Please provide email and password' });
     }
 
-    const user = await User.findOne({ email }).select('+password');
-    if (!user || !(await user.comparePassword(password))) {
+    // Query user from PostgreSQL
+    const userRes = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    const user = userRes.rows[0];
+
+    if (!user || !(await bcrypt.compare(password, user.password_hash))) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
-    const token = signToken(user._id);
+    // Fetch profile from MongoDB (upsert in case it doesn't exist)
+    let profile = await Profile.findOne({ userId: user.id });
+    if (!profile) {
+      profile = await Profile.create({ userId: user.id });
+    }
+
+    const token = signToken(user.id);
     res.json({
       success: true,
       token,
-      user: serializeUser(user),
+      user: serializeUser(user, profile),
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -91,7 +114,15 @@ router.post('/login', async (req, res) => {
 
 // @GET /api/auth/me
 router.get('/me', protect, async (req, res) => {
-  res.json({ success: true, user: serializeUser(req.user) });
+  try {
+    let profile = await Profile.findOne({ userId: req.user.id });
+    if (!profile) {
+      profile = await Profile.create({ userId: req.user.id });
+    }
+    res.json({ success: true, user: serializeUser(req.user, profile) });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 // @PUT /api/auth/profile
@@ -108,14 +139,23 @@ router.put('/profile', protect, async (req, res) => {
       organizationRole,
       onboarding,
     } = req.body;
+
     const normalizedOrganization = organization || {
       name: organizationName,
       role: organizationRole,
     };
-    const user = await User.findByIdAndUpdate(
-      req.user._id,
+
+    // Update name in PostgreSQL
+    const userRes = await pool.query(
+      'UPDATE users SET name = $1 WHERE id = $2 RETURNING *',
+      [name || req.user.name, req.user.id]
+    );
+    const user = userRes.rows[0];
+
+    // Update profile in MongoDB
+    const profile = await Profile.findOneAndUpdate(
+      { userId: req.user.id },
       {
-        name,
         age,
         gender,
         weight,
@@ -123,13 +163,11 @@ router.put('/profile', protect, async (req, res) => {
         organization: normalizedOrganization,
         ...(onboarding ? { onboarding } : {}),
       },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true, upsert: true }
     );
-    res.json({ success: true, user: serializeUser(user) });
+
+    res.json({ success: true, user: serializeUser(user, profile) });
   } catch (err) {
-    if (err.name === 'ValidationError' || err.name === 'CastError') {
-      return res.status(400).json({ success: false, message: err.message });
-    }
     res.status(500).json({ success: false, message: err.message });
   }
 });

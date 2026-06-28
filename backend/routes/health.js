@@ -1,7 +1,8 @@
 const express = require('express');
 const HealthReading = require('../models/HealthReading');
 const Alert = require('../models/Alert');
-const User = require('../models/User');
+const pool = require('../db/postgres');
+const Profile = require('../models/Profile');
 const { protect } = require('../middleware/auth');
 const { getPlan } = require('../config/plans');
 const {
@@ -151,7 +152,7 @@ const generateAlerts = async (reading, userId, io) => {
 // @POST /api/health/reading - Submit new health reading
 router.post('/reading', protect, async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).select('subscription.plan');
+    const user = await Profile.findOne({ userId: req.user.id }).select('subscription');
     const activePlan = getPlan(user?.subscription?.plan || 'starter');
     const monthlyLimit = activePlan.limits.readingsPerMonth;
     if (monthlyLimit !== null) {
@@ -197,7 +198,7 @@ router.post('/reading', protect, async (req, res) => {
 // @POST /api/health/import/health-connect - Adapter-ready Health Connect ingestion
 router.post('/import/health-connect', protect, async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).select('subscription.plan');
+    const user = await Profile.findOne({ userId: req.user.id }).select('subscription');
     const activePlan = getPlan(user?.subscription?.plan || 'starter');
     const monthlyLimit = activePlan.limits.readingsPerMonth;
     if (monthlyLimit !== null) {
@@ -371,7 +372,7 @@ router.get('/fitness/today', protect, async (req, res) => {
         recordedAt: { $gte: start },
       }).sort({ recordedAt: 1 }),
       HealthReading.findOne({ user: req.user._id }).sort({ recordedAt: -1 }),
-      User.findById(req.user._id).select('dailyGoals'),
+      Profile.findOne({ userId: req.user.id }).select('dailyGoals'),
     ]);
 
     const sum = (arr) => arr.reduce((a, b) => a + b, 0);
@@ -436,7 +437,7 @@ router.get('/fitness/today', protect, async (req, res) => {
 // @GET /api/health/goals - Get user fitness goals
 router.get('/goals', protect, async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).select('dailyGoals');
+    const user = await Profile.findOne({ userId: req.user.id }).select('dailyGoals');
     res.json({
       success: true,
       goals: user?.dailyGoals || { steps: 10000, activeMinutes: 60, hydration: 100 },
@@ -454,10 +455,10 @@ router.put('/goals', protect, async (req, res) => {
       activeMinutes: Number(req.body.activeMinutes) || 60,
       hydration: Number(req.body.hydration) || 100,
     };
-    const user = await User.findByIdAndUpdate(
-      req.user._id,
+    const user = await Profile.findOneAndUpdate(
+      { userId: req.user.id },
       { dailyGoals: nextGoals },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true, upsert: true }
     ).select('dailyGoals');
     res.json({ success: true, goals: user.dailyGoals });
   } catch (err) {
@@ -593,7 +594,7 @@ router.get('/insights', protect, async (req, res) => {
 router.post('/generate-ai', protect, async (req, res) => {
   try {
     const latest = await HealthReading.findOne({ user: req.user._id }).sort({ recordedAt: -1 });
-    const user = await User.findById(req.user._id).select('dailyGoals');
+    const user = await Profile.findOne({ userId: req.user.id }).select('dailyGoals');
 
     const context = {
       lastReading: latest || { heartRate: { value: 72 }, spo2: { value: 98 }, temperature: { value: 36.6 } },
@@ -655,12 +656,14 @@ router.post('/ai-coach', protect, async (req, res) => {
 
     // Fetch history for context
     const readings = await HealthReading.find({ user: req.user._id }).sort({ recordedAt: -1 }).limit(10);
-    const user = await User.findById(req.user._id).select('dailyGoals name onboarding');
+    const { rows } = await pool.query('SELECT name FROM users WHERE id = $1', [req.user.id]);
+    const userRow = rows[0];
+    const userProfile = await Profile.findOne({ userId: req.user.id }).select('dailyGoals onboarding');
 
     const profile = {
-      name: user.name,
-      goals: user.dailyGoals,
-      onboarding: user.onboarding
+      name: userRow?.name || 'User',
+      goals: userProfile?.dailyGoals || { steps: 10000, activeMinutes: 60, hydration: 100 },
+      onboarding: userProfile?.onboarding || { completed: false }
     };
 
     const response = await generateAICoachResponse(message, readings, profile);
@@ -690,9 +693,10 @@ router.get('/sleep-lab', protect, async (req, res) => {
 router.get('/medical-report', protect, async (req, res) => {
   try {
     const latestData = await HealthReading.find({ user: req.user._id }).sort({ recordedAt: -1 }).limit(30);
-    const user = await User.findById(req.user._id).select('name');
+    const { rows } = await pool.query('SELECT name FROM users WHERE id = $1', [req.user.id]);
+    const userRow = rows[0];
 
-    const reportText = await generateMedicalReportMarkdown(user.name, latestData);
+    const reportText = await generateMedicalReportMarkdown(userRow?.name || 'User', latestData);
     res.json({ success: true, report: reportText });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
