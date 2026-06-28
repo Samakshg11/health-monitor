@@ -74,6 +74,7 @@ router.post('/register', async (req, res) => {
       user: serializeUser(user, profile),
     });
   } catch (err) {
+    console.error('❌ /register error:', err.message, err.stack);
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -109,6 +110,7 @@ router.post('/login', async (req, res) => {
       user: serializeUser(user, profile),
     });
   } catch (err) {
+    console.error('❌ /login error:', err.message, err.stack);
     res.status(500).json({ success: false, message: err.message });
   }
 });
