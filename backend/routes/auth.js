@@ -12,6 +12,7 @@ const signToken = (id) =>
 
 const serializeUser = (user, profile = {}) => ({
   id: user.id || user._id,
+  _id: user.id || user._id,   // alias for frontend compatibility
   name: user.name,
   email: user.email,
   age: profile?.age,
