@@ -81,6 +81,31 @@ test('normalizeIncomingReading preserves connected source metadata for health co
   assert.deepEqual(normalized.steps, { value: 8123 });
 });
 
+test('normalizeIncomingReading falls back invalid sources to manual metadata', () => {
+  const normalized = normalizeIncomingReading({
+    source: 'watch_guess',
+    steps: { value: 1200 },
+  });
+
+  assert.equal(normalized.source, 'manual');
+  assert.equal(normalized.sourceDetails.mode, 'manual_entry');
+  assert.equal(normalized.sourceDetails.label, 'Manual check-in');
+  assert.deepEqual(normalized.steps, { value: 1200 });
+});
+
+test('normalizeIncomingReading assigns band preview metadata for device source', () => {
+  const normalized = normalizeIncomingReading({
+    source: 'device',
+    heartRate: { value: 76 },
+  });
+
+  assert.equal(normalized.source, 'device');
+  assert.equal(normalized.sourceDetails.mode, 'band_plus_phone');
+  assert.equal(normalized.sourceDetails.confidenceTier, 'high');
+  assert.equal(normalized.sourceDetails.supportedMetrics.vitals, 'sensor-backed preview');
+  assert.deepEqual(normalized.heartRate, { value: 76 });
+});
+
 test('shouldSoftenEstimatedAlert only softens estimated vital alerts', () => {
   assert.equal(shouldSoftenEstimatedAlert({ source: 'estimated' }, 'heartRate'), true);
   assert.equal(shouldSoftenEstimatedAlert({ source: 'estimated' }, 'stressLevel'), true);
