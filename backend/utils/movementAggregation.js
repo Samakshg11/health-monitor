@@ -5,7 +5,11 @@ const getDayKey = (value) => {
   return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
 };
 
-const metricValue = (reading, key) => Number(reading?.[key]?.value || 0);
+const metricValue = (reading, key) => {
+  const value = Number(reading?.[key]?.value || 0);
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, value);
+};
 
 const aggregateMovementMetricByDay = (readings, key) => {
   const byDay = new Map();
