@@ -96,8 +96,11 @@ const buildDefaultSourceDetails = (source, sourceDetails = {}) => {
 
 const normalizeConfidence = (confidence = {}, source) => {
   const next = { ...confidence };
-  if (typeof next.overall === 'number') {
-    next.overall = clamp(Math.round(next.overall), 0, 100);
+
+  for (const [key, value] of Object.entries(next)) {
+    if (typeof value === 'number') {
+      next[key] = clamp(Math.round(value), 0, 100);
+    }
   }
 
   const vitalKeys = ['heartRate', 'bloodPressure', 'spo2', 'temperature'];
