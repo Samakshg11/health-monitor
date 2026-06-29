@@ -74,6 +74,7 @@ vitalwatch/
 ### Prerequisites
 - Node.js 18+
 - MongoDB (local or Atlas)
+- PostgreSQL 14+ (local or hosted) for auth/profile billing tables
 
 ### 1. Clone / Extract the project
 
@@ -82,8 +83,14 @@ vitalwatch/
 cd backend
 npm install
 cp .env.example .env
-# Edit .env — set your MONGO_URI and JWT_SECRET
+# Edit .env — set MONGO_URI, DATABASE_URL, JWT_SECRET, and CLIENT_URL
 npm run dev
+```
+
+Run backend tests before opening a PR:
+```bash
+cd backend
+npm test
 ```
 
 ### 3. Frontend Setup
