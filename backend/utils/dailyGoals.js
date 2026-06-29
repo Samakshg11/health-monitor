@@ -5,6 +5,7 @@ const DEFAULT_DAILY_GOALS = {
 };
 
 const normalizeGoalNumber = (value, { fallback, min, max }) => {
+  if (value === undefined || value === null || value === '') return fallback;
   const number = Number(value);
   if (!Number.isFinite(number)) return fallback;
   return Math.min(max, Math.max(min, Math.round(number)));

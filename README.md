@@ -168,6 +168,18 @@ When a user submits a reading, the backend:
 
 Frontend listens on the user's private room and updates the dashboard live.
 
+## ✅ Verification
+
+```bash
+npm test
+```
+
+Before shipping changes, also smoke-test:
+- Register/login against the configured PostgreSQL database
+- Submit a manual health reading and confirm alerts are generated for abnormal values
+- Import the demo Health Connect payload from the Device page
+- Open Reports and confirm movement totals reflect daily cumulative data
+
 ## 🧭 Data Source Model
 
 VitalWatch now separates sources explicitly:
