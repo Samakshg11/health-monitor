@@ -5,6 +5,12 @@ const cloneMetric = (metric) => {
   return { ...metric };
 };
 
+const normalizeNotes = (notes) => {
+  if (typeof notes !== 'string') return notes;
+  const trimmed = notes.trim();
+  return trimmed ? trimmed.slice(0, 500) : undefined;
+};
+
 const metricConfidence = (reading, key) => {
   const explicit = reading?.confidence?.[key];
   if (typeof explicit === 'number') return explicit;
@@ -135,8 +141,8 @@ const normalizeIncomingReading = (payload = {}) => {
     source,
     sourceDetails,
     confidence,
-    workoutMode: payload.workoutMode,
-    notes: payload.notes,
+    workoutMode: ['balanced', 'push', 'recovery'].includes(payload.workoutMode) ? payload.workoutMode : 'balanced',
+    notes: normalizeNotes(payload.notes),
   };
 
   if (source === 'estimated') {

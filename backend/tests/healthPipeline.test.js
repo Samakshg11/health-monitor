@@ -140,3 +140,24 @@ test('normalizeIncomingReading clamps metric-level confidence values', () => {
   assert.equal(normalized.confidence.steps, 100);
   assert.equal(normalized.confidence.hydration, 0);
 });
+
+test('normalizeIncomingReading trims notes and falls back invalid workout modes', () => {
+  const normalized = normalizeIncomingReading({
+    source: 'manual',
+    workoutMode: 'sprint',
+    notes: `  ${'x'.repeat(520)}  `,
+  });
+
+  assert.equal(normalized.workoutMode, 'balanced');
+  assert.equal(normalized.notes.length, 500);
+  assert.equal(normalized.notes, 'x'.repeat(500));
+});
+
+test('normalizeIncomingReading drops blank note strings', () => {
+  const normalized = normalizeIncomingReading({
+    source: 'manual',
+    notes: '   ',
+  });
+
+  assert.equal(normalized.notes, undefined);
+});
