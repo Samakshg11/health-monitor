@@ -1,19 +1,21 @@
 const express = require('express');
 const Alert = require('../models/Alert');
 const { protect } = require('../middleware/auth');
+const { parseBoundedInteger } = require('../utils/queryParams');
 
 const router = express.Router();
 
 // @GET /api/alerts - Get all alerts for user
 router.get('/', protect, async (req, res) => {
   try {
-    const { unread, limit = 20 } = req.query;
+    const { unread } = req.query;
+    const limit = parseBoundedInteger(req.query.limit, { fallback: 20, min: 1, max: 100 });
     const query = { user: req.user._id };
     if (unread === 'true') query.read = false;
 
     const alerts = await Alert.find(query)
       .sort({ createdAt: -1 })
-      .limit(parseInt(limit));
+      .limit(limit);
 
     const unreadCount = await Alert.countDocuments({ user: req.user._id, read: false });
 
