@@ -13,6 +13,7 @@ const {
 const { mapHealthConnectPayload } = require('../utils/healthConnectAdapter');
 const { summarizeMovementMetric } = require('../utils/movementAggregation');
 const { parseBoundedInteger, parseDaysWindow } = require('../utils/queryParams');
+const { DEFAULT_DAILY_GOALS, normalizeDailyGoals } = require('../utils/dailyGoals');
 const {
   generateHealthReadingAI,
   generateAICoachResponse,
@@ -388,11 +389,7 @@ router.get('/fitness/today', protect, async (req, res) => {
     const heartRate = readings.filter((r) => r.heartRate?.value).map((r) => r.heartRate.value);
     const cadence = readings.filter((r) => r.cadence?.value).map((r) => r.cadence.value);
 
-    const goals = user?.dailyGoals || {
-      steps: 10000,
-      activeMinutes: 60,
-      hydration: 100,
-    };
+    const goals = user?.dailyGoals || DEFAULT_DAILY_GOALS;
 
     const totals = {
       steps: stepsSummary.total,
@@ -443,7 +440,7 @@ router.get('/goals', protect, async (req, res) => {
     const user = await Profile.findOne({ userId: req.user.id }).select('dailyGoals');
     res.json({
       success: true,
-      goals: user?.dailyGoals || { steps: 10000, activeMinutes: 60, hydration: 100 },
+      goals: user?.dailyGoals || DEFAULT_DAILY_GOALS,
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -453,11 +450,7 @@ router.get('/goals', protect, async (req, res) => {
 // @PUT /api/health/goals - Update user fitness goals
 router.put('/goals', protect, async (req, res) => {
   try {
-    const nextGoals = {
-      steps: Number(req.body.steps) || 10000,
-      activeMinutes: Number(req.body.activeMinutes) || 60,
-      hydration: Number(req.body.hydration) || 100,
-    };
+    const nextGoals = normalizeDailyGoals(req.body);
     const user = await Profile.findOneAndUpdate(
       { userId: req.user.id },
       { dailyGoals: nextGoals },
