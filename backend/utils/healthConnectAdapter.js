@@ -1,3 +1,9 @@
+const numberMetric = (value) => {
+  if (value === undefined || value === null || value === '') return undefined;
+  const number = Number(value);
+  return Number.isFinite(number) ? { value: number } : undefined;
+};
+
 const mapHealthConnectPayload = (payload = {}) => {
   const metrics = payload.metrics || {};
   const summary = payload.summary || {};
@@ -34,22 +40,22 @@ const mapHealthConnectPayload = (payload = {}) => {
     },
     workoutMode: payload.workoutMode || 'balanced',
     notes: payload.notes || 'Imported from Health Connect adapter',
-    heartRate: metrics.heartRate ? { value: Number(metrics.heartRate) } : undefined,
+    heartRate: numberMetric(metrics.heartRate),
     bloodPressure:
-      metrics.systolic && metrics.diastolic
+      numberMetric(metrics.systolic) && numberMetric(metrics.diastolic)
         ? { systolic: Number(metrics.systolic), diastolic: Number(metrics.diastolic) }
         : undefined,
-    spo2: metrics.spo2 ? { value: Number(metrics.spo2) } : undefined,
-    temperature: metrics.temperature ? { value: Number(metrics.temperature) } : undefined,
-    steps: metrics.steps ? { value: Number(metrics.steps) } : undefined,
-    calories: metrics.calories ? { value: Number(metrics.calories) } : undefined,
-    distance: metrics.distance ? { value: Number(metrics.distance) } : undefined,
-    cadence: metrics.cadence ? { value: Number(metrics.cadence) } : undefined,
-    activeMinutes: metrics.activeMinutes ? { value: Number(metrics.activeMinutes) } : undefined,
-    hydration: metrics.hydration ? { value: Number(metrics.hydration) } : undefined,
-    sleepScore: metrics.sleepScore ? { value: Number(metrics.sleepScore) } : undefined,
-    sleepHours: metrics.sleepHours ? { value: Number(metrics.sleepHours) } : undefined,
-    stressLevel: metrics.stressLevel ? { value: Number(metrics.stressLevel) } : undefined,
+    spo2: numberMetric(metrics.spo2),
+    temperature: numberMetric(metrics.temperature),
+    steps: numberMetric(metrics.steps),
+    calories: numberMetric(metrics.calories),
+    distance: numberMetric(metrics.distance),
+    cadence: numberMetric(metrics.cadence),
+    activeMinutes: numberMetric(metrics.activeMinutes),
+    hydration: numberMetric(metrics.hydration),
+    sleepScore: numberMetric(metrics.sleepScore),
+    sleepHours: numberMetric(metrics.sleepHours),
+    stressLevel: numberMetric(metrics.stressLevel),
   };
 };
 

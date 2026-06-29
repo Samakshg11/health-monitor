@@ -45,3 +45,19 @@ test('mapHealthConnectPayload preserves caller-provided source labels and confid
   assert.equal(mapped.sourceDetails.supportedMetrics.recovery, 'sleep session');
   assert.deepEqual(mapped.confidence, { overall: 74, steps: 80 });
 });
+
+test('mapHealthConnectPayload preserves explicit zero metric values', () => {
+  const mapped = mapHealthConnectPayload({
+    metrics: {
+      steps: 0,
+      calories: '0',
+      distance: 0,
+      activeMinutes: '0',
+    },
+  });
+
+  assert.deepEqual(mapped.steps, { value: 0 });
+  assert.deepEqual(mapped.calories, { value: 0 });
+  assert.deepEqual(mapped.distance, { value: 0 });
+  assert.deepEqual(mapped.activeMinutes, { value: 0 });
+});
