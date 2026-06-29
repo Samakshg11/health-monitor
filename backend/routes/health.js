@@ -12,6 +12,7 @@ const {
 } = require('../utils/healthPipeline');
 const { mapHealthConnectPayload } = require('../utils/healthConnectAdapter');
 const { summarizeMovementMetric } = require('../utils/movementAggregation');
+const { parseBoundedInteger, parseDaysWindow } = require('../utils/queryParams');
 const {
   generateHealthReadingAI,
   generateAICoachResponse,
@@ -243,7 +244,9 @@ router.post('/import/health-connect', protect, async (req, res) => {
 // @GET /api/health/readings - Get all readings for user
 router.get('/readings', protect, async (req, res) => {
   try {
-    const { limit = 50, page = 1, startDate, endDate } = req.query;
+    const { startDate, endDate } = req.query;
+    const limit = parseBoundedInteger(req.query.limit, { fallback: 50, min: 1, max: 100 });
+    const page = parseBoundedInteger(req.query.page, { fallback: 1, min: 1, max: 10000 });
 
     const query = { user: req.user._id };
     if (startDate || endDate) {
@@ -254,15 +257,15 @@ router.get('/readings', protect, async (req, res) => {
 
     const readings = await HealthReading.find(query)
       .sort({ recordedAt: -1 })
-      .limit(parseInt(limit))
-      .skip((parseInt(page) - 1) * parseInt(limit));
+      .limit(limit)
+      .skip((page - 1) * limit);
 
     const total = await HealthReading.countDocuments(query);
 
     res.json({
       success: true,
       readings,
-      pagination: { page: parseInt(page), limit: parseInt(limit), total },
+      pagination: { page, limit, total },
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -282,9 +285,9 @@ router.get('/latest', protect, async (req, res) => {
 // @GET /api/health/stats - Get aggregated stats for reports
 router.get('/stats', protect, async (req, res) => {
   try {
-    const { days = 7 } = req.query;
+    const days = parseDaysWindow(req.query.days, { fallback: 7, min: 1, max: 90 });
     const since = new Date();
-    since.setDate(since.getDate() - parseInt(days));
+    since.setDate(since.getDate() - days);
 
     const readings = await HealthReading.find({
       user: req.user._id,
