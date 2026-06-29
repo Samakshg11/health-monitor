@@ -181,6 +181,15 @@ This keeps the app honest: phone-only mode does not pretend to have direct senso
 
 For local demos, the Device page includes a mock Health Connect import action that sends a sample connected-source payload through the backend adapter route.
 
+### Source payload expectations
+
+- `manual` readings may include direct vitals, activity summaries, recovery metrics, and user notes.
+- `estimated` readings should send movement/recovery estimates only; backend normalization strips direct vitals from phone-only payloads.
+- `health_connect` imports enter through `/api/health/import/health-connect` with a `metrics` object and optional `summary` metadata.
+- `device` is reserved for the future band preview and should include source details that make simulated sensor confidence clear.
+
+Each source should include `confidence.overall` when possible. Metric-level confidence is preserved for connected/manual sources and removed from estimated direct vitals.
+
 ## 🎨 Design System
 
 - **Theme**: Dark medical aesthetic
