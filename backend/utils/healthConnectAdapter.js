@@ -10,6 +10,14 @@ const numberMetric = (value) => {
   return Number.isFinite(number) ? { value: number } : undefined;
 };
 
+const numberValue = (value) => numberMetric(value)?.value;
+
+const bloodPressureMetric = (metrics) => {
+  const systolic = numberValue(metrics.systolic);
+  const diastolic = numberValue(metrics.diastolic);
+  return systolic !== undefined && diastolic !== undefined ? { systolic, diastolic } : undefined;
+};
+
 const mapHealthConnectPayload = (payload = {}) => {
   const metrics = payload.metrics || {};
   const summary = payload.summary || {};
@@ -47,10 +55,7 @@ const mapHealthConnectPayload = (payload = {}) => {
     workoutMode: payload.workoutMode || 'balanced',
     notes: payload.notes || 'Imported from Health Connect adapter',
     heartRate: numberMetric(metrics.heartRate),
-    bloodPressure:
-      numberMetric(metrics.systolic) && numberMetric(metrics.diastolic)
-        ? { systolic: Number(metrics.systolic), diastolic: Number(metrics.diastolic) }
-        : undefined,
+    bloodPressure: bloodPressureMetric(metrics),
     spo2: numberMetric(metrics.spo2),
     temperature: numberMetric(metrics.temperature),
     steps: numberMetric(metrics.steps),

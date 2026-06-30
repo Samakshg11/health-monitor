@@ -75,3 +75,21 @@ test('mapHealthConnectPayload accepts object-shaped metric values', () => {
   assert.deepEqual(mapped.steps, { value: 6400 });
   assert.deepEqual(mapped.sleepHours, { value: 7.5 });
 });
+
+test('mapHealthConnectPayload maps blood pressure only when both values are valid', () => {
+  const mapped = mapHealthConnectPayload({
+    metrics: {
+      systolic: { value: '118' },
+      diastolic: '76',
+    },
+  });
+  const partial = mapHealthConnectPayload({
+    metrics: {
+      systolic: '118',
+      diastolic: 'nope',
+    },
+  });
+
+  assert.deepEqual(mapped.bloodPressure, { systolic: 118, diastolic: 76 });
+  assert.equal(partial.bloodPressure, undefined);
+});
