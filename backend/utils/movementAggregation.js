@@ -33,7 +33,9 @@ const aggregateMovementMetricByDay = (readings, key) => {
     }
   }
 
-  return Array.from(byDay.values()).map(({ cumulativeMax, manualSum }) => cumulativeMax + manualSum);
+  return Array.from(byDay.entries())
+    .sort(([dayA], [dayB]) => dayA.localeCompare(dayB))
+    .map(([, { cumulativeMax, manualSum }]) => cumulativeMax + manualSum);
 };
 
 const summarizeMovementMetric = (readings, key, { precision = 0 } = {}) => {

@@ -51,3 +51,13 @@ test('summarizeMovementMetric ignores negative and invalid movement values', () 
   assert.equal(summary.max, 1200);
   assert.equal(summary.avg, 1200);
 });
+
+test('summarizeMovementMetric returns daily totals in chronological order', () => {
+  const summary = summarizeMovementMetric([
+    { source: 'manual', recordedAt: '2026-03-17T08:00:00.000Z', steps: { value: 3000 } },
+    { source: 'manual', recordedAt: '2026-03-15T08:00:00.000Z', steps: { value: 1000 } },
+    { source: 'manual', recordedAt: '2026-03-16T08:00:00.000Z', steps: { value: 2000 } },
+  ], 'steps');
+
+  assert.deepEqual(summary.dailyTotals, [1000, 2000, 3000]);
+});
