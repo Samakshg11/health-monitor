@@ -104,8 +104,14 @@ const normalizeConfidence = (confidence = {}, source) => {
   const next = { ...confidence };
 
   for (const [key, value] of Object.entries(next)) {
-    if (typeof value === 'number') {
-      next[key] = clamp(Math.round(value), 0, 100);
+    if (value === '' || value === null) {
+      delete next[key];
+      continue;
+    }
+
+    const number = Number(value);
+    if (Number.isFinite(number)) {
+      next[key] = clamp(Math.round(number), 0, 100);
     }
   }
 

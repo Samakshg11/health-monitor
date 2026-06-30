@@ -141,6 +141,23 @@ test('normalizeIncomingReading clamps metric-level confidence values', () => {
   assert.equal(normalized.confidence.hydration, 0);
 });
 
+test('normalizeIncomingReading normalizes numeric confidence strings', () => {
+  const normalized = normalizeIncomingReading({
+    source: 'manual',
+    confidence: {
+      overall: '88.2',
+      steps: '101',
+      hydration: '',
+      sleepScore: null,
+    },
+  });
+
+  assert.equal(normalized.confidence.overall, 88);
+  assert.equal(normalized.confidence.steps, 100);
+  assert.equal(normalized.confidence.hydration, undefined);
+  assert.equal(normalized.confidence.sleepScore, undefined);
+});
+
 test('normalizeIncomingReading trims notes and falls back invalid workout modes', () => {
   const normalized = normalizeIncomingReading({
     source: 'manual',
