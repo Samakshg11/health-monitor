@@ -1,5 +1,8 @@
 const parseBoundedInteger = (value, { fallback, min = 1, max = 100 } = {}) => {
-  const parsed = Number.parseInt(value, 10);
+  if (value === undefined || value === null || value === '') return fallback;
+  const text = String(value).trim();
+  if (!/^-?\d+$/.test(text)) return fallback;
+  const parsed = Number.parseInt(text, 10);
   if (!Number.isFinite(parsed)) return fallback;
   return Math.min(max, Math.max(min, parsed));
 };
