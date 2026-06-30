@@ -12,7 +12,7 @@ const {
 } = require('../utils/healthPipeline');
 const { mapHealthConnectPayload } = require('../utils/healthConnectAdapter');
 const { summarizeMovementMetric } = require('../utils/movementAggregation');
-const { parseBoundedInteger, parseDaysWindow } = require('../utils/queryParams');
+const { parseBoundedInteger, parseDateParam, parseDaysWindow } = require('../utils/queryParams');
 const { DEFAULT_DAILY_GOALS, buildDailyGoalProgress, normalizeDailyGoals } = require('../utils/dailyGoals');
 const {
   generateHealthReadingAI,
@@ -245,15 +245,16 @@ router.post('/import/health-connect', protect, async (req, res) => {
 // @GET /api/health/readings - Get all readings for user
 router.get('/readings', protect, async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
     const limit = parseBoundedInteger(req.query.limit, { fallback: 50, min: 1, max: 100 });
     const page = parseBoundedInteger(req.query.page, { fallback: 1, min: 1, max: 10000 });
+    const startDate = parseDateParam(req.query.startDate);
+    const endDate = parseDateParam(req.query.endDate);
 
     const query = { user: req.user._id };
     if (startDate || endDate) {
       query.recordedAt = {};
-      if (startDate) query.recordedAt.$gte = new Date(startDate);
-      if (endDate) query.recordedAt.$lte = new Date(endDate);
+      if (startDate) query.recordedAt.$gte = startDate;
+      if (endDate) query.recordedAt.$lte = endDate;
     }
 
     const readings = await HealthReading.find(query)

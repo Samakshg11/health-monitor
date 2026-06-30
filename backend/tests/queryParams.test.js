@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { parseBoundedInteger, parseDaysWindow } = require('../utils/queryParams');
+const { parseBoundedInteger, parseDateParam, parseDaysWindow } = require('../utils/queryParams');
 
 test('parseBoundedInteger returns fallback for missing or invalid values', () => {
   assert.equal(parseBoundedInteger(undefined, { fallback: 20 }), 20);
@@ -23,4 +23,11 @@ test('parseDaysWindow applies a safe reporting range', () => {
   assert.equal(parseDaysWindow(undefined), 7);
   assert.equal(parseDaysWindow('0'), 1);
   assert.equal(parseDaysWindow('365'), 90);
+});
+
+test('parseDateParam returns dates only for valid values', () => {
+  assert.equal(parseDateParam(undefined), undefined);
+  assert.equal(parseDateParam('not-a-date'), undefined);
+  assert.equal(parseDateParam(''), undefined);
+  assert.equal(parseDateParam('2026-03-15').toISOString(), '2026-03-15T00:00:00.000Z');
 });

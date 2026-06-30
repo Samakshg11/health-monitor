@@ -10,7 +10,14 @@ const parseBoundedInteger = (value, { fallback, min = 1, max = 100 } = {}) => {
 const parseDaysWindow = (value, { fallback = 7, min = 1, max = 90 } = {}) =>
   parseBoundedInteger(value, { fallback, min, max });
 
+const parseDateParam = (value) => {
+  if (value === undefined || value === null || value === '') return undefined;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date;
+};
+
 module.exports = {
   parseBoundedInteger,
+  parseDateParam,
   parseDaysWindow,
 };
