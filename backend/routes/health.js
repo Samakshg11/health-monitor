@@ -13,7 +13,7 @@ const {
 const { mapHealthConnectPayload } = require('../utils/healthConnectAdapter');
 const { summarizeMovementMetric } = require('../utils/movementAggregation');
 const { parseBoundedInteger, parseDaysWindow } = require('../utils/queryParams');
-const { DEFAULT_DAILY_GOALS, normalizeDailyGoals } = require('../utils/dailyGoals');
+const { DEFAULT_DAILY_GOALS, buildDailyGoalProgress, normalizeDailyGoals } = require('../utils/dailyGoals');
 const {
   generateHealthReadingAI,
   generateAICoachResponse,
@@ -398,13 +398,7 @@ router.get('/fitness/today', protect, async (req, res) => {
       activeMinutes: activeMinutesSummary.total,
     };
 
-    const progress = {
-      steps: goals.steps ? Math.min(100, Math.round((totals.steps / goals.steps) * 100)) : 0,
-      activeMinutes: goals.activeMinutes
-        ? Math.min(100, Math.round((totals.activeMinutes / goals.activeMinutes) * 100))
-        : 0,
-      hydration: latest?.hydration?.value || 0,
-    };
+    const progress = buildDailyGoalProgress(totals, goals, latest);
 
     const summary = {
       totals,

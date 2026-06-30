@@ -29,7 +29,21 @@ const normalizeDailyGoals = (payload = {}) => ({
   }),
 });
 
+const progressPercent = (value, goal) => {
+  const current = Number(value || 0);
+  const target = Number(goal || 0);
+  if (!Number.isFinite(current) || !Number.isFinite(target) || target <= 0) return 0;
+  return Math.min(100, Math.max(0, Math.round((current / target) * 100)));
+};
+
+const buildDailyGoalProgress = (totals = {}, goals = DEFAULT_DAILY_GOALS, latest = {}) => ({
+  steps: progressPercent(totals.steps, goals.steps),
+  activeMinutes: progressPercent(totals.activeMinutes, goals.activeMinutes),
+  hydration: progressPercent(latest.hydration?.value, goals.hydration),
+});
+
 module.exports = {
   DEFAULT_DAILY_GOALS,
+  buildDailyGoalProgress,
   normalizeDailyGoals,
 };
