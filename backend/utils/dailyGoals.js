@@ -11,19 +11,19 @@ const normalizeGoalNumber = (value, { fallback, min, max }) => {
   return Math.min(max, Math.max(min, Math.round(number)));
 };
 
-const normalizeDailyGoals = (payload = {}) => ({
+const normalizeDailyGoals = (payload = {}, base = DEFAULT_DAILY_GOALS) => ({
   steps: normalizeGoalNumber(payload.steps, {
-    fallback: DEFAULT_DAILY_GOALS.steps,
+    fallback: base.steps,
     min: 1000,
     max: 50000,
   }),
   activeMinutes: normalizeGoalNumber(payload.activeMinutes, {
-    fallback: DEFAULT_DAILY_GOALS.activeMinutes,
+    fallback: base.activeMinutes,
     min: 5,
     max: 300,
   }),
   hydration: normalizeGoalNumber(payload.hydration, {
-    fallback: DEFAULT_DAILY_GOALS.hydration,
+    fallback: base.hydration,
     min: 20,
     max: 100,
   }),

@@ -444,7 +444,8 @@ router.get('/goals', protect, async (req, res) => {
 // @PUT /api/health/goals - Update user fitness goals
 router.put('/goals', protect, async (req, res) => {
   try {
-    const nextGoals = normalizeDailyGoals(req.body);
+    const existing = await Profile.findOne({ userId: req.user.id }).select('dailyGoals');
+    const nextGoals = normalizeDailyGoals(req.body, existing?.dailyGoals || DEFAULT_DAILY_GOALS);
     const user = await Profile.findOneAndUpdate(
       { userId: req.user.id },
       { dailyGoals: nextGoals },

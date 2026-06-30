@@ -37,6 +37,20 @@ test('normalizeDailyGoals accepts numeric strings', () => {
   );
 });
 
+test('normalizeDailyGoals can preserve existing targets for partial updates', () => {
+  assert.deepEqual(
+    normalizeDailyGoals(
+      { activeMinutes: 75 },
+      { steps: 8500, activeMinutes: 45, hydration: 88 }
+    ),
+    {
+      steps: 8500,
+      activeMinutes: 75,
+      hydration: 88,
+    }
+  );
+});
+
 test('buildDailyGoalProgress caps movement and hydration progress', () => {
   assert.deepEqual(
     buildDailyGoalProgress(
