@@ -126,6 +126,18 @@ test('metricConfidence falls back from metric to overall confidence', () => {
   assert.equal(metricConfidence({}, 'steps'), 100);
 });
 
+test('metricConfidence reads numeric confidence strings from existing readings', () => {
+  const reading = {
+    confidence: {
+      overall: '61',
+      steps: '84',
+    },
+  };
+
+  assert.equal(metricConfidence(reading, 'steps'), 84);
+  assert.equal(metricConfidence(reading, 'spo2'), 61);
+});
+
 test('normalizeIncomingReading clamps metric-level confidence values', () => {
   const normalized = normalizeIncomingReading({
     source: 'manual',

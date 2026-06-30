@@ -12,9 +12,15 @@ const normalizeNotes = (notes) => {
 };
 
 const metricConfidence = (reading, key) => {
-  const explicit = reading?.confidence?.[key];
-  if (typeof explicit === 'number') return explicit;
-  if (typeof reading?.confidence?.overall === 'number') return reading.confidence.overall;
+  const confidenceValue = (value) => {
+    const number = Number(value);
+    return value !== '' && Number.isFinite(number) ? number : undefined;
+  };
+
+  const explicit = confidenceValue(reading?.confidence?.[key]);
+  if (explicit !== undefined) return explicit;
+  const overall = confidenceValue(reading?.confidence?.overall);
+  if (overall !== undefined) return overall;
   return 100;
 };
 
