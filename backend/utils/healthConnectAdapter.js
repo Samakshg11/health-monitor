@@ -1,6 +1,12 @@
+const rawMetricValue = (value) => {
+  if (value && typeof value === 'object' && !Array.isArray(value)) return value.value;
+  return value;
+};
+
 const numberMetric = (value) => {
-  if (value === undefined || value === null || value === '') return undefined;
-  const number = Number(value);
+  const raw = rawMetricValue(value);
+  if (raw === undefined || raw === null || raw === '') return undefined;
+  const number = Number(raw);
   return Number.isFinite(number) ? { value: number } : undefined;
 };
 

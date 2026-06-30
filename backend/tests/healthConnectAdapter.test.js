@@ -61,3 +61,17 @@ test('mapHealthConnectPayload preserves explicit zero metric values', () => {
   assert.deepEqual(mapped.distance, { value: 0 });
   assert.deepEqual(mapped.activeMinutes, { value: 0 });
 });
+
+test('mapHealthConnectPayload accepts object-shaped metric values', () => {
+  const mapped = mapHealthConnectPayload({
+    metrics: {
+      heartRate: { value: '71' },
+      steps: { value: 6400 },
+      sleepHours: { value: '7.5' },
+    },
+  });
+
+  assert.deepEqual(mapped.heartRate, { value: 71 });
+  assert.deepEqual(mapped.steps, { value: 6400 });
+  assert.deepEqual(mapped.sleepHours, { value: 7.5 });
+});
