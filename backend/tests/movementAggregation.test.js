@@ -38,6 +38,16 @@ test('summarizeMovementMetric keeps distance precision for daily totals', () => 
   assert.equal(summary.total, 4.92);
   assert.equal(summary.max, 4.92);
   assert.equal(summary.avg, 4.9);
+  assert.deepEqual(summary.dailyTotals, [4.92]);
+});
+
+test('summarizeMovementMetric rounds daily totals with requested precision', () => {
+  const summary = summarizeMovementMetric([
+    { source: 'manual', recordedAt: '2026-03-15T08:00:00.000Z', distance: { value: 1.111 } },
+    { source: 'manual', recordedAt: '2026-03-15T12:00:00.000Z', distance: { value: 2.222 } },
+  ], 'distance', { precision: 2 });
+
+  assert.deepEqual(summary.dailyTotals, [3.33]);
 });
 
 test('summarizeMovementMetric ignores negative and invalid movement values', () => {

@@ -53,7 +53,7 @@ const summarizeMovementMetric = (readings, key, { precision = 0 } = {}) => {
     total: normalize(sum),
     avg: avg === null ? null : Number(avg.toFixed(1)),
     max: normalize(max),
-    dailyTotals,
+    dailyTotals: dailyTotals.map(normalize),
   };
 };
 
